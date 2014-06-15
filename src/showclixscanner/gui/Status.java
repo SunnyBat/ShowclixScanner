@@ -2,7 +2,10 @@
  * To change this template, choose Tools | Templates
  * and open the template in the editor.
  */
-package showclixscanner;
+package showclixscanner.gui;
+
+import showclixscanner.Email;
+import showclixscanner.ShowclixScanner;
 
 /**
  *

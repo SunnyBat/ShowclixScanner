@@ -121,14 +121,16 @@ public class DatabaseManager {
    *
    * @param cookieList The list of cookies to write to the database
    */
-  public static void writeCookies(List<HttpCookie> cookieList) {
+  public static void writeCookies(List<HttpCookie> tempList) {
+    List<HttpCookie> cookieList = new ArrayList(); // Apparently the List can be unchangeable, so create a new one and dump into it so it IS changeable
+    cookieList.addAll(tempList);
     if (cookieList == null) {
       return;
     }
     makeCookieBackup();
-    Connection connection;
-    Statement statement;
-    ResultSet resultSet;
+    Connection connection = null;
+    Statement statement = null;
+    ResultSet resultSet = null;
     HttpCookie currCookie;
     List nameList = new ArrayList();
     Iterator<HttpCookie> iterator = cookieList.iterator();
@@ -141,9 +143,12 @@ public class DatabaseManager {
       connection = DriverManager.getConnection("jdbc:sqlite:" + databaseDirectory + "cookies.sqlite");
       statement = connection.createStatement();
       resultSet = statement.executeQuery("SELECT * FROM moz_cookies");
+      statement = connection.createStatement();
+      connection.setAutoCommit(false);
       int lastID = 1;
       while (resultSet.next()) {
         if (nameList.contains(resultSet.getString("name"))) {
+          System.out.println("UPDATING A COOKIE!!!");
           currCookie = cookieList.get(nameList.indexOf(resultSet.getString("name")));
           if (currCookie == null) {
             ShowclixScanner.println("ERROR with writing cookies!", ShowclixScanner.LOGTYPE.MINIMUM);
@@ -158,10 +163,13 @@ public class DatabaseManager {
           ShowclixScanner.println("==========================================================");
           ShowclixScanner.println("Updating cookie in database.");
           String sql = "UPDATE moz_cookies set value = '" + currCookie.getValue() + "' where name='" + currCookie.getName() + "';";
+          statement.close();
+          statement = connection.createStatement();
           statement.executeUpdate(sql);
           connection.commit();
           cookieList.remove(currCookie);
           nameList.remove(currCookie.getName());
+          //resultSet = statement.executeQuery("SELECT * FROM moz_cookies");
         }
         lastID = resultSet.getInt("id");
       }
@@ -174,17 +182,27 @@ public class DatabaseManager {
                 + "VALUES (" + lastID + ", 'showclix.com', 0, 0, '" + currCookie.getName() + "', '" + currCookie.getValue() + "', '.showclix.com', '"
                 + currCookie.getPath() + "', 1464970835, " + (System.currentTimeMillis() * 1000) + ", " + (System.currentTimeMillis() * 1000) + ", '"
                 + currCookie.getSecure() + "' );";
+        statement.close();
+        statement = connection.createStatement();
         statement.executeUpdate(sql);
         connection.commit();
         lastID++;
       }
       connection.commit();
-      connection.close();
+      resultSet.close();
       statement.close();
+      connection.close();
       lastID++;
     } catch (Exception e) {
       ShowclixScanner.println("ERROR");
       e.printStackTrace();
+    } finally {
+      try {
+        connection.close();
+        statement.close();
+        resultSet.close();
+      } catch (Exception e) {
+      }
     }
   }
 

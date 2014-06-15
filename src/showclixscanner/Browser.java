@@ -18,6 +18,20 @@ public class Browser {
 
   private static boolean killFirefox;
   private static String showclixLink;
+  private static long updateSize;
+  private static String versionNotes;
+  private static final String updateLink = "https://dl.dropboxusercontent.com/u/16152108/ShowclixScanner.jar";
+  private static final String patchNotesLink = "https://dl.dropboxusercontent.com/u/16152108/ShowclixScannerUpdates.txt";
+  private static URL updateURL;
+  private static URL patchNotesURL;
+
+  protected static void init() {
+    try {
+      updateURL = new URL(updateLink);
+      patchNotesURL = new URL(patchNotesLink);
+    } catch (MalformedURLException malformedURLException) {
+    }
+  }
 
   public static void setKillFirefox(boolean kill) {
     killFirefox = kill;
@@ -123,7 +137,9 @@ public class Browser {
     ShowclixScanner.println("````COOKIES````");
     for (HttpCookie cookie : cookies) {
       ShowclixScanner.println(cookie.getName() + " : " + cookie.getValue(), ShowclixScanner.LOGTYPE.DEBUG);
+      Network.writeHttpCookie(cookie);
     }
+    Network.endCookies();
     if (shouldKillFirefox()) {
       ProcessHandler.killFirefox();
       while (!DatabaseManager.isDatabaseAvailable()) { // Wait for Firefox to save changes to the cookie database
@@ -182,6 +198,152 @@ public class Browser {
 //      ErrorManagement.showErrorWindow("ERORR checking the Showclix website for updates!", e);
       e.printStackTrace();
       return -1;
+    }
+  }
+
+  public static String getVersionNotes(String version) { // TODO: Utilize getVersionNotes() instead of copying code and adding 3 lines
+    String versNotes = getVersionNotes();
+    if (versNotes == null) {
+      return null;
+    }
+    try {
+      versNotes = versNotes.substring(0, versNotes.indexOf("~~~" + version)).trim();
+    } catch (Exception e) {
+    }
+    return versNotes;
+  }
+
+  public static String getVersionNotes() {
+    return versionNotes;
+  }
+
+  public static void loadVersionNotes() {
+    URLConnection inputConnection;
+    InputStream textInputStream;
+    BufferedReader myReader = null;
+    try {
+      inputConnection = patchNotesURL.openConnection();
+      textInputStream = inputConnection.getInputStream();
+      myReader = new BufferedReader(new InputStreamReader(textInputStream));
+      String line;
+      String lineSeparator = System.getProperty("line.separator", "\n");
+      String allText = "Patch Notes:" + lineSeparator;
+      while ((line = myReader.readLine()) != null) {
+        line = line.trim();
+        allText += line + lineSeparator;
+      }
+      versionNotes = allText.trim();
+    } catch (Exception e) {
+      System.out.println("Unable to load version notes!");
+    } finally {
+      try {
+        if (myReader != null) {
+          myReader.close();
+        }
+      } catch (IOException e) {
+        // nothing to see here
+      }
+    }
+  }
+
+  public static long getUpdateSize() {
+    return updateSize;
+  }
+
+  /**
+   * Checks whether or not an update to the program is available. Note that this compares the file
+   * sizes between the current file and the file on the Dropbox server. This means that if ANY
+   * modification is made to the JAR file, it's likely to trigger an update.
+   * This THEORETICALLY works well. We'll find out whether or not it will actually work in
+   * practice.
+   *
+   * @return True if an update is available, false if not.
+   */
+  public static boolean updateAvailable() {
+    try {
+      File mF = new File(ShowclixScanner.class.getProtectionDomain().getCodeSource().getLocation().toURI().getPath());
+      long fileSize = mF.length();
+      if (fileSize == 4096) { // No, I do NOT want to update when I'm running in Netbeans
+        return false;
+      }
+      URLConnection conn = updateURL.openConnection();
+      updateSize = conn.getContentLengthLong();
+      System.out.println("Updatesize = " + updateSize + " -- Filesize = " + fileSize);
+      if (updateSize == -1) {
+        //ErrorManagement.showErrorWindow("ERROR checking for updates!", "PAX Checker was unable to check for updates.", null);
+        return false;
+      } else if (updateSize != fileSize) {
+        System.out.println("Update available!");
+        return true;
+      }
+    } catch (Exception e) {
+      System.out.println("ERROR updating program!");
+      //ErrorManagement.showErrorWindow("ERROR updating program!", "The program was unable to check for new updates.", e);
+    }
+    return false;
+  }
+
+  /**
+   * Downloads the latest JAR file from the Dropbox server. Note that this automatically closes
+   * the
+   * program once finished. Also note that once this is run, the program WILL eventually close,
+   * either through finishing the update or failing to properly update.
+   */
+  public static void updateProgram() {
+    try {
+      URLConnection conn = updateURL.openConnection();
+      InputStream inputStream = conn.getInputStream();
+      long remoteFileSize = conn.getContentLength();
+      System.out.println("Downloding file...\nUpdate Size(compressed): " + remoteFileSize + " Bytes");
+      String path = ShowclixScanner.class.getProtectionDomain().getCodeSource().getLocation().toURI().getPath();
+      BufferedOutputStream buffOutputStream = new BufferedOutputStream(new FileOutputStream(new File(path.substring(0, path.lastIndexOf(".jar")) + ".temp.jar")));
+      byte[] buffer = new byte[32 * 1024];
+      int bytesRead = 0;
+      int in = 0;
+      int prevPercent = 0;
+      while ((bytesRead = inputStream.read(buffer)) != -1) {
+        in += bytesRead;
+        buffOutputStream.write(buffer, 0, bytesRead);
+        if (ShowclixScanner.update != null) {
+          if ((int) (((in * 100) / remoteFileSize)) != prevPercent) {
+            prevPercent = (int) (((in * 100) / remoteFileSize));
+            ShowclixScanner.update.updateProgress(prevPercent);
+          }
+        }
+      }
+      buffOutputStream.flush();
+      buffOutputStream.close();
+      inputStream.close();
+      if (ShowclixScanner.update != null) {
+        ShowclixScanner.update.setStatusLabelText("Finishing up...");
+      }
+      try { // Code to make a copy of the current JAR file
+        File inputFile = new File(path.substring(0, path.lastIndexOf(".jar")) + ".temp.jar");
+        InputStream fIn = new BufferedInputStream(new FileInputStream(inputFile));
+        File outputFile = new File(path);
+        buffOutputStream = new BufferedOutputStream(new FileOutputStream(outputFile));
+        buffer = new byte[32 * 1024];
+        bytesRead = 0;
+        in = 0;
+        while ((bytesRead = fIn.read(buffer)) != -1) {
+          in += bytesRead;
+          buffOutputStream.write(buffer, 0, bytesRead);
+        }
+        buffOutputStream.flush();
+        buffOutputStream.close();
+        fIn.close();
+        inputFile.delete();
+      } catch (Exception e) {
+//        ErrorManagement.showErrorWindow("ERROR updating", "Unable to complete update -- unable to copy temp JAR file to current JAR file.", e);
+//        ErrorManagement.fatalError();
+      }
+      System.out.println("Download Complete!");
+      ShowclixScanner.startNewProgramInstance();
+    } catch (Exception e) {
+      e.printStackTrace();
+      System.out.println("ERROR updating program!");
+//      ErrorManagement.showErrorWindow("ERROR updating the program", "The program was unable to successfully download the update. If the problem continues, please manually download the latest version at " + updateURL.getPath(), e);
+//      ErrorManagement.fatalError();
     }
   }
 }

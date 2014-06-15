@@ -2,10 +2,14 @@
  * To change this template, choose Tools | Templates
  * and open the template in the editor.
  */
-package showclixscanner;
+package showclixscanner.gui;
 
 import java.io.File;
 import javax.swing.JFileChooser;
+import showclixscanner.Browser;
+import showclixscanner.DatabaseManager;
+import showclixscanner.Email;
+import showclixscanner.ShowclixScanner;
 
 /**
  *

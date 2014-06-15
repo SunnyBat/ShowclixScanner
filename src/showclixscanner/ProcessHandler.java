@@ -17,7 +17,6 @@ public class ProcessHandler {
     String line;
     while ((line = reader.readLine()) != null) {
       line = line.toLowerCase();
-      System.out.println(line);
       if (line.contains(serviceName)) {
         System.out.println(serviceName + " found -- killing process.");
         return true;
@@ -33,7 +32,7 @@ public class ProcessHandler {
 
   public static void killFirefox() throws Exception {
     String processName = "firefox.exe";
-    if (isProcessRunging(processName)) {
+    while (isProcessRunging(processName)) {
       killProcess(processName);
     }
   }

@@ -8,16 +8,16 @@ import java.io.*;
 import java.net.URL;
 import java.net.URLConnection;
 import java.util.*;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import showclixscanner.gui.*;
 
 /**
  *
  * @author SunnyBat
  */
 public class ShowclixScanner {
-  
+
   private static String showclixLink;
+  public static final String VERSION = "1.0.3";
   private static URL showclixURL;
   private static Setup setup;
   private static Status status;
@@ -25,21 +25,66 @@ public class ShowclixScanner {
   private static int connectionErrorCount;
   private static int connectionSuccessCount;
   private static LOGTYPE printLevel = LOGTYPE.MINIMUM;
-  private static final Logger log = Logger.getLogger(ShowclixScanner.class.getName());
-  private static final List<Logger> logList = new ArrayList<>();
   public static final int AUS_SHOWCLIX_ID = 3776089;
   public static final int PRIME_SHOWCLIX_ID = 3846764;
+  private static boolean updateProgram;
+  protected static Update update;
 
   /**
    * @param args the command line arguments
    */
   public static void main(String[] args) throws Exception {
+    startBackgroundThread(new Runnable() {
+      @Override
+      public void run() {
+        Network.initializeConnection();
+      }
+    }, "Network Connection Thread");
+//    Network.writeHttpCookie(new HttpCookie("TESTNAME", "TESTHOST"));
+    //Network.doStuff();
+//    if (true) {
+//      return;
+//    }
     //Browser.readShowclixInventory();
     javax.swing.ToolTipManager.sharedInstance().setDismissDelay(600000); // Make Tooltips stay forever
+    boolean doUpdate = true;
+    if (args.length > 0) {
+      System.out.println("Args!");
+      for (int a = 0; a < args.length; a++) {
+        System.out.println("args[" + a + "] = " + args[a]);
+        if (args[a].equals("noupdate")) { // Used by the program when starting the new version just downloaded. Can also be used if you don't want updates
+          doUpdate = false;
+        }
+      }
+    }
     Email.init();
+    Browser.init();
+    loadPatchNotesInBackground();
     int showclixID = PRIME_SHOWCLIX_ID;
     Browser.setShowclixLink(showclixID);
     setShowclixURL(showclixID);
+    if (doUpdate) {
+      try {
+        System.out.println("Checking for updates...");
+        if (Browser.updateAvailable()) {
+          update = new Update();
+          while (update.isVisible() && !updateProgram) {
+            Thread.sleep(100);
+          }
+          if (updateProgram) {
+            update.setStatusLabelText("Downloading update...");
+            Browser.updateProgram();
+            update.dispose();
+            return;
+          }
+          update.dispose();
+        }
+      } catch (Exception e) {
+//        ErrorManagement.showErrorWindow("ERROR", "An error has occurred while attempting to update the program. If the problem persists, please manually download the latest version.", e);
+//        ErrorManagement.fatalError();
+        return;
+      }
+    }
     setup = new Setup();
     setup.setVisible(true);
     while (setup.isVisible()) {
@@ -257,46 +302,34 @@ public class ShowclixScanner {
       badgeList.clear();
     }
   }
-  
+
   public static void setRefreshTime(int seconds) {
     secondsBetweenRefresh = seconds;
   }
-  
-  public static void registerLogger(Logger logger) {
-    logList.add(logger);
-  }
-  
+
   public static int getFailedAttemptCount() {
     return connectionErrorCount;
   }
-  
-  private static void setLogLevel(Level level) {
-    Iterator<Logger> myIt = logList.iterator();
-    while (myIt.hasNext()) {
-      Logger currLog = myIt.next();
-      currLog.setLevel(level);
-    }
-  }
-  
+
   public static void setPrintLevel(LOGTYPE level) {
     printLevel = level;
   }
-  
+
   public static void println(String msg) {
     println(msg, LOGTYPE.NOTES);
   }
-  
+
   public static void println(String msg, LOGTYPE type) {
     if (status != null && LOGTYPE.shouldPrint(type)) {
       status.println(msg);
     }
     System.out.println(msg);
   }
-  
+
   public static enum LOGTYPE {
-    
+
     MINIMUM, NOTES, VERBOSE, DEBUG, ALL;
-    
+
     public static boolean shouldPrint(LOGTYPE type) {
       //LOGTYPE setting = status.getConsoleOutputLevel().toUpperCase();
       switch (type) {
@@ -326,7 +359,7 @@ public class ShowclixScanner {
       return false;
     }
   }
-  
+
   public static BADGE_STATUS parseAmount(int amount) {
     if (amount == 1) {
       return BADGE_STATUS.LOW;
@@ -336,7 +369,7 @@ public class ShowclixScanner {
       return BADGE_STATUS.SOLD_OUT;
     }
   }
-  
+
   public static BADGE_TYPES parseType(String parse) {
     if (parse.contains("friday")) {
       return BADGE_TYPES.FRIDAY;
@@ -352,33 +385,33 @@ public class ShowclixScanner {
       return BADGE_TYPES.NONE;
     }
   }
-  
+
   private static class Badge {
-    
+
     public BADGE_TYPES badgeType;
     public BADGE_STATUS badgeStatus;
     public int maxBadges;
     public String badgeQuery;
     public String backupQuery;
-    
+
     public Badge() {
     }
   }
-  
+
   public static enum BADGE_STATUS {
-    
+
     AVAILABLE, LOW, SOLD_OUT;
   }
-  
+
   public static enum BADGE_TYPES {
-    
+
     NONE, FRIDAY, SATURDAY, SUNDAY, MONDAY, FOURDAY;
   }
-  
+
   public static void setShowclixURL(int showclixID) {
     setShowclixURL("https://www.showclix.com/event/" + showclixID);
   }
-  
+
   public static void setShowclixURL(String URL) {
     showclixLink = URL;
     try {
@@ -386,6 +419,50 @@ public class ShowclixScanner {
     } catch (Exception e) {
       println("ERROR creating new Showclix URL with link " + showclixLink, LOGTYPE.MINIMUM);
       e.printStackTrace();
+    }
+  }
+
+  /**
+   * Set the updateProgram flag to true. This will start the program updating process. This should
+   * only be called by the Update GUI when the main() method is waiting for the prompt.
+   */
+  public static void startUpdatingProgram() {
+    updateProgram = true;
+  }
+
+  /**
+   * This makes a new daemon, low-priority Thread and runs it.
+   *
+   * @param run The Runnable to make into a Thread and run
+   */
+  public static void startBackgroundThread(Runnable run) {
+    startBackgroundThread(run, "General Background Thread");
+  }
+
+  public static void startBackgroundThread(Runnable run, String name) {
+    Thread newThread = new Thread(run);
+    newThread.setName(name);
+    newThread.setDaemon(true); // Kill the JVM if only daemon threads are running
+    newThread.setPriority(Thread.MIN_PRIORITY); // Let other Threads take priority, as this will probably not run for long
+    newThread.start(); // Start the Thread
+  }
+
+  public static void loadPatchNotesInBackground() {
+    startBackgroundThread(new Runnable() {
+      @Override
+      public void run() {
+        Browser.loadVersionNotes();
+      }
+    }, "Load Patch Notes");
+  }
+
+  public static void startNewProgramInstance() {
+    try {
+      String path = ShowclixScanner.class.getProtectionDomain().getCodeSource().getLocation().toURI().getPath();
+      ProcessBuilder pb = new ProcessBuilder(System.getProperty("java.home") + "\\bin\\javaw.exe", "-jar", new File(path).getAbsolutePath()); // path can have leading / on it, getAbsolutePath() removes them
+      Process p = pb.start();
+    } catch (Exception e) {
+      //ErrorManagement.showErrorWindow("Small Error", "Unable to automatically run update.", null);
     }
   }
 }
