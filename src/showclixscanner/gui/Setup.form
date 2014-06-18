@@ -49,8 +49,11 @@
                   <Component id="jButton1" alignment="0" max="32767" attributes="0"/>
                   <Component id="jSlider1" alignment="0" max="32767" attributes="0"/>
                   <Component id="jPanel1" alignment="0" max="32767" attributes="0"/>
-                  <Group type="102" alignment="0" attributes="0">
-                      <Component id="jCheckBox1" min="-2" max="-2" attributes="0"/>
+                  <Group type="102" attributes="0">
+                      <Group type="103" groupAlignment="0" attributes="0">
+                          <Component id="jCheckBox1" alignment="0" min="-2" max="-2" attributes="0"/>
+                          <Component id="jCheckBox2" alignment="0" min="-2" max="-2" attributes="0"/>
+                      </Group>
                       <EmptySpace min="0" pref="0" max="32767" attributes="0"/>
                   </Group>
               </Group>
@@ -88,6 +91,8 @@
               <Component id="jCheckBox1" min="-2" max="-2" attributes="0"/>
               <EmptySpace max="-2" attributes="0"/>
               <Component id="jPanel1" min="-2" max="-2" attributes="0"/>
+              <EmptySpace type="unrelated" max="-2" attributes="0"/>
+              <Component id="jCheckBox2" min="-2" max="-2" attributes="0"/>
               <EmptySpace type="separate" max="-2" attributes="0"/>
               <Component id="jButton1" min="-2" max="-2" attributes="0"/>
               <EmptySpace max="32767" attributes="0"/>
@@ -169,7 +174,6 @@
     </Component>
     <Component class="javax.swing.JCheckBox" name="jCheckBox1">
       <Properties>
-        <Property name="selected" type="boolean" value="true"/>
         <Property name="text" type="java.lang.String" value="Automatically reserve tickets in Firefox (HOVER FOR WARNING!!!)"/>
         <Property name="toolTipText" type="java.lang.String" value="&lt;html&gt;&#xa;Make sure that you ONLY have Firefox&lt;br&gt;&#xa;open if you&apos;re right there working with it.&lt;br&gt;&#xa;Otherwise, make sure it&apos;s COMPLETELY&lt;br&gt;&#xa;closed!&lt;br&gt;&#xa;&lt;i&gt;The reason for this is:&lt;/i&gt;&lt;br&gt;&#xa;If Firefox doesn&apos;t close automatically&lt;br&gt;&#xa;(if it prompts you if you really want to close&lt;br&gt;&#xa;X tabs), the program will reserve tickets BUT&lt;br&gt;&#xa;will wait until Firefox is closed to open the PAX&lt;br&gt;&#xa;registration page.&lt;br&gt;&#xa;&lt;i&gt;Also important to note:&lt;/i&gt;&lt;br&gt;&#xa;Firefox should be set to your default web&lt;br&gt;&#xa;browser. If not, you will have to manually&lt;br&gt;&#xa;open firefox (tickets will still be reserved&lt;br&gt;&#xa;regardless of which browser is your default)&#xa;&lt;/html&gt;"/>
       </Properties>
@@ -223,6 +227,11 @@
             <StringItem index="1" value="PAX Aus"/>
           </StringArray>
         </Property>
+      </Properties>
+    </Component>
+    <Component class="javax.swing.JCheckBox" name="jCheckBox2">
+      <Properties>
+        <Property name="text" type="java.lang.String" value="Listen on Port 9243"/>
       </Properties>
     </Component>
   </SubComponents>

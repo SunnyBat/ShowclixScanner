@@ -9,30 +9,40 @@ import java.io.*;
 public class ProcessHandler {
 
   private static final String TASKLIST = "tasklist";
-  private static final String KILL = "taskkill /IM ";
+  private static final String KILL = "taskkill /T /IM ";
 
-  public static boolean isProcessRunging(String serviceName) throws Exception {
-    Process p = Runtime.getRuntime().exec(TASKLIST);
-    BufferedReader reader = new BufferedReader(new InputStreamReader(p.getInputStream()));
-    String line;
-    while ((line = reader.readLine()) != null) {
-      line = line.toLowerCase();
-      if (line.contains(serviceName)) {
-        System.out.println(serviceName + " found -- killing process.");
-        return true;
+  public static boolean isProcessRunging(String serviceName) {
+    try {
+      Process p = Runtime.getRuntime().exec(TASKLIST);
+      BufferedReader reader = new BufferedReader(new InputStreamReader(p.getInputStream()));
+      String line;
+      while ((line = reader.readLine()) != null) {
+        line = line.toLowerCase();
+        if (line.contains(serviceName)) {
+          System.out.println(serviceName + " found -- killing process.");
+          return true;
+        }
       }
+    } catch (IOException e) {
+      System.out.println("Error reading processes!");
+      e.printStackTrace();
     }
     return false;
 
   }
 
-  public static void killProcess(String serviceName) throws Exception {
-    Runtime.getRuntime().exec(KILL + serviceName);
+  public static void killProcess(String serviceName) {
+    try {
+      Runtime.getRuntime().exec(KILL + serviceName);
+    } catch (IOException e) {
+      System.out.println("Unable to kill process " + serviceName);
+      e.printStackTrace();
+    }
   }
 
-  public static void killFirefox() throws Exception {
+  public static void killFirefox() {
     String processName = "firefox.exe";
-    while (isProcessRunging(processName)) {
+    if (isProcessRunging(processName)) {
       killProcess(processName);
     }
   }

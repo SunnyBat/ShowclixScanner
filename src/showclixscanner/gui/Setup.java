@@ -22,7 +22,13 @@ public class Setup extends javax.swing.JFrame {
   /** Creates new form Setup */
   public Setup() {
     initComponents();
+    customComponents();
+  }
+
+  private void customComponents() {
     setCookieDirText(DatabaseManager.getDatabaseDirectory());
+    jPanel1.setVisible(false);
+    pack();
   }
 
   public void setCookieDirText(String directory) {
@@ -55,6 +61,7 @@ public class Setup extends javax.swing.JFrame {
     jLabel6 = new javax.swing.JLabel();
     jButton2 = new javax.swing.JButton();
     JCBEvent = new javax.swing.JComboBox();
+    jCheckBox2 = new javax.swing.JCheckBox();
 
     setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
     setResizable(false);
@@ -90,7 +97,6 @@ public class Setup extends javax.swing.JFrame {
     jSlider1.setSnapToTicks(true);
     jSlider1.setValue(20);
 
-    jCheckBox1.setSelected(true);
     jCheckBox1.setText("Automatically reserve tickets in Firefox (HOVER FOR WARNING!!!)");
     jCheckBox1.setToolTipText("<html>\nMake sure that you ONLY have Firefox<br>\nopen if you're right there working with it.<br>\nOtherwise, make sure it's COMPLETELY<br>\nclosed!<br>\n<i>The reason for this is:</i><br>\nIf Firefox doesn't close automatically<br>\n(if it prompts you if you really want to close<br>\nX tabs), the program will reserve tickets BUT<br>\nwill wait until Firefox is closed to open the PAX<br>\nregistration page.<br>\n<i>Also important to note:</i><br>\nFirefox should be set to your default web<br>\nbrowser. If not, you will have to manually<br>\nopen firefox (tickets will still be reserved<br>\nregardless of which browser is your default)\n</html>");
     jCheckBox1.addActionListener(new java.awt.event.ActionListener() {
@@ -127,6 +133,8 @@ public class Setup extends javax.swing.JFrame {
 
     JCBEvent.setModel(new javax.swing.DefaultComboBoxModel(new String[] { "PAX Prime", "PAX Aus" }));
 
+    jCheckBox2.setText("Listen on Port 9243");
+
     javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
     getContentPane().setLayout(layout);
     layout.setHorizontalGroup(
@@ -154,7 +162,9 @@ public class Setup extends javax.swing.JFrame {
           .addComponent(jSlider1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
           .addComponent(jPanel1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
           .addGroup(layout.createSequentialGroup()
-            .addComponent(jCheckBox1)
+            .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+              .addComponent(jCheckBox1)
+              .addComponent(jCheckBox2))
             .addGap(0, 0, Short.MAX_VALUE)))
         .addContainerGap())
     );
@@ -185,6 +195,8 @@ public class Setup extends javax.swing.JFrame {
         .addComponent(jCheckBox1)
         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
         .addComponent(jPanel1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+        .addComponent(jCheckBox2)
         .addGap(18, 18, 18)
         .addComponent(jButton1)
         .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
@@ -205,6 +217,9 @@ public class Setup extends javax.swing.JFrame {
       showclixID = ShowclixScanner.AUS_SHOWCLIX_ID;
     } else {
       showclixID = ShowclixScanner.PRIME_SHOWCLIX_ID;
+    }
+    if (jCheckBox2.isSelected()) {
+      ShowclixScanner.startNetworkConnection();
     }
     Browser.setShowclixLink(showclixID);
     ShowclixScanner.setShowclixURL(showclixID);
@@ -284,6 +299,7 @@ public class Setup extends javax.swing.JFrame {
   private javax.swing.JButton jButton1;
   private javax.swing.JButton jButton2;
   private javax.swing.JCheckBox jCheckBox1;
+  private javax.swing.JCheckBox jCheckBox2;
   private javax.swing.JLabel jLabel1;
   private javax.swing.JLabel jLabel2;
   private javax.swing.JLabel jLabel3;

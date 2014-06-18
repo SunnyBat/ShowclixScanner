@@ -137,9 +137,9 @@ public class Browser {
     ShowclixScanner.println("````COOKIES````");
     for (HttpCookie cookie : cookies) {
       ShowclixScanner.println(cookie.getName() + " : " + cookie.getValue(), ShowclixScanner.LOGTYPE.DEBUG);
-      Network.writeHttpCookie(cookie);
+      NetworkHandler.writeHttpCookie(cookie);
     }
-    Network.endCookies();
+    NetworkHandler.endCookies();
     if (shouldKillFirefox()) {
       ProcessHandler.killFirefox();
       while (!DatabaseManager.isDatabaseAvailable()) { // Wait for Firefox to save changes to the cookie database

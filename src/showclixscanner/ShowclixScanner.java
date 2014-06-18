@@ -29,18 +29,13 @@ public class ShowclixScanner {
   public static final int PRIME_SHOWCLIX_ID = 3846764;
   private static boolean updateProgram;
   protected static Update update;
+  private static java.awt.Image showclixIcon;
 
   /**
    * @param args the command line arguments
    */
   public static void main(String[] args) throws Exception {
-    startBackgroundThread(new Runnable() {
-      @Override
-      public void run() {
-        Network.initializeConnection();
-      }
-    }, "Network Connection Thread");
-//    Network.writeHttpCookie(new HttpCookie("TESTNAME", "TESTHOST"));
+//    NetworkHandler.writeHttpCookie(new HttpCookie("TESTNAME", "TESTHOST"));
     //Network.doStuff();
 //    if (true) {
 //      return;
@@ -60,6 +55,7 @@ public class ShowclixScanner {
     Email.init();
     Browser.init();
     loadPatchNotesInBackground();
+    prefetchIconsInBackground();
     int showclixID = PRIME_SHOWCLIX_ID;
     Browser.setShowclixLink(showclixID);
     setShowclixURL(showclixID);
@@ -91,6 +87,8 @@ public class ShowclixScanner {
       Thread.sleep(250);
     }
     status = new Status();
+    if (showclixIcon == null) System.out.println("ERROR: ICON IS NULL");
+    status.setIconImage(showclixIcon);
     URLConnection inputConnection;
     InputStream textInputStream;
     BufferedReader myReader = null;
@@ -464,5 +462,27 @@ public class ShowclixScanner {
     } catch (Exception e) {
       //ErrorManagement.showErrorWindow("Small Error", "Unable to automatically run update.", null);
     }
+  }
+
+  public static void startNetworkConnection() {
+    startBackgroundThread(new Runnable() {
+      @Override
+      public void run() {
+        NetworkHandler.listenForConnections();
+      }
+    }, "Network Connection Thread");
+  }
+
+  public static void prefetchIconsInBackground() {
+    startBackgroundThread(new Runnable() {
+      @Override
+      public void run() {
+        try {
+          showclixIcon = javax.imageio.ImageIO.read(ShowclixScanner.class.getResourceAsStream("/resources/Showclix.png"));
+        } catch (Exception e) {
+          System.out.println("Unable to fetch Showclix Icon!");
+        }
+      }
+    }, "Icon Prefetch Thread");
   }
 }
