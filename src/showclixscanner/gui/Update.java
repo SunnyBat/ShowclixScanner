@@ -44,13 +44,13 @@ public class Update extends javax.swing.JFrame {
     jButton3 = new javax.swing.JButton();
 
     setDefaultCloseOperation(javax.swing.WindowConstants.DO_NOTHING_ON_CLOSE);
-    setTitle("PAX Checker Update");
+    setTitle("ShowclixScanner Update");
     setAlwaysOnTop(true);
     setResizable(false);
 
     jLabel1.setFont(new java.awt.Font("Tahoma", 0, 24)); // NOI18N
     jLabel1.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
-    jLabel1.setText("PAXChecker Update Found!");
+    jLabel1.setText("Update Available!");
 
     jLabel2.setFont(new java.awt.Font("Tahoma", 2, 11)); // NOI18N
     jLabel2.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);

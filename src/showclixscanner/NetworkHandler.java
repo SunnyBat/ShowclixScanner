@@ -5,6 +5,7 @@ import java.io.*;
 import java.util.*;
 import showclixscanner.gui.*;
 import java.util.concurrent.CountDownLatch;
+import org.wetorrent.upnp.*;
 
 /**
  *
@@ -12,65 +13,183 @@ import java.util.concurrent.CountDownLatch;
  */
 public class NetworkHandler {
 
-  private static String address;
-  private static ServerSocket mySock;
+  private static ServerSocket serverSocket;
   private static final int port = 9243;
   private static List<HttpCookie> cookies = new ArrayList();
-  private static List<ClientConnection> connections = new ArrayList();
+  private static volatile List<ClientConnection> connections = new ArrayList();
   private static Connections connectionWindow;
   private static ApproveForm approve;
+  private static int incomingConnectionMode = 1;
 
   public static void listenForConnections() {
     try {
       connectionWindow = new Connections();
       connectionWindow.setVisible(true);
-      mySock = new ServerSocket(port);
-      while (mySock.isBound()) {
-        System.out.println("Listening on port " + port);
-        Socket mySocket = mySock.accept();
-        System.out.println("Client found at: " + mySocket.getInetAddress().getHostAddress());
+      ShowclixScanner.startNewThread(new Runnable() {
+        @Override
+        public void run() {
+          try {
+            enableUPnP();
+          } catch (Exception e) {
+            e.printStackTrace();
+          }
+        }
+      }, "UPnP Port Mapping Thread");
+      serverSocket = new ServerSocket(port);
+      while (!serverSocket.isClosed()) {
+        println("Listening on port " + port);
+        Socket mySocket = null;
+        try {
+          mySocket = serverSocket.accept();
+        } catch (SocketException se) {
+          continue;
+        }
+        println("Client found at: " + mySocket.getInetAddress().getHostAddress());
         ConnectionPanel mP = new ConnectionPanel(mySocket.getInetAddress().getHostAddress());
         ClientConnection con = new ClientConnection(mySocket, mP);
-        final Socket socketCopy = mySocket;
-        final CountDownLatch countdown = new CountDownLatch(1);
-        javax.swing.SwingUtilities.invokeAndWait(new Runnable() {
-          @Override
-          public void run() {
-            approve = new ApproveForm(countdown);
-            approve.setHeader("Connection from " + socketCopy.getInetAddress().getHostAddress());
-            approve.setDescription("A connection has been found. Please approve or disapprove it.");
-            approve.setVisible(true);
+        int mode = getIncomingConnectionMode();
+        if (mode == 1) {
+          final String address = mySocket.getInetAddress().getHostAddress();
+          final CountDownLatch countdown = new CountDownLatch(1);
+          javax.swing.SwingUtilities.invokeAndWait(new Runnable() {
+            @Override
+            public void run() {
+              approve = new ApproveForm(countdown);
+              approve.setHeader("Connection from " + address);
+              approve.setDescription("A connection has been found. Please approve or disapprove it.");
+              approve.setVisible(true);
+            }
+          });
+          println("Waiting for connection approval...");
+          countdown.await();
+          if (!approve.isApproved()) {
+            println("Connection DISAPPROVED, killing connection...");
+            con.reject();
+            con.killConnection();
+            continue;
+          } else {
+            println("Connection approved.");
+            con.accept();
           }
-        });
-        countdown.await();
-        if (!approve.isApproved()) {
-          System.out.println("Connection DISAPPROVED, killing connection...");
-          con.reject();
-          con.killConnection();
-          continue;
         } else {
-          System.out.println("Connection approved.");
-          con.accept();
+          if (mode == 2) {
+            println("Connection approved.");
+            con.accept();
+          } else {
+            println("Connection DISAPPROVED, killing connection...");
+            con.reject();
+            con.killConnection();
+            continue;
+          }
         }
         connectionWindow.addConnection(mP, mySocket.getInetAddress().getHostAddress());
+        con.sendWebsiteAddress(Browser.getShowclixLink());
         if (!cookies.isEmpty()) {
-          System.out.println("Cookies found... Sending cookies over now.");
+          println("Cookies found... Sending cookies over now.");
           Iterator<HttpCookie> myIt = cookies.iterator();
           while (myIt.hasNext()) {
             con.writeHttpCookie(myIt.next());
           }
           con.endCookies();
-          System.out.println("Cookies sent!");
+          println("Cookies sent!");
         }
         registerConnection(con);
       }
+      connectionWindow.dispose();
     } catch (Exception e) {
+      e.printStackTrace();
+    }
+  }
+
+  public static void enableUPnP() throws Exception {
+    connectionWindow.setRetryUPnPButtonEnabled(false);
+    println("Starting weupnp");
+    GatewayDiscover gatewayDiscover = new GatewayDiscover();
+    println("Looking for Gateway Devices...");
+    Map<InetAddress, GatewayDevice> gateways = gatewayDiscover.discover();
+    if (gateways.isEmpty()) {
+      println("No gateways found");
+      println("Stopping weupnp");
+      connectionWindow.setRetryUPnPButtonEnabled(true);
+      connectionWindow.setRetryUPnPButtonVisible(true);
+      return;
+    }
+    println(gateways.size() + " gateway(s) found\n");
+    int counter = 0;
+    for (GatewayDevice gw : gateways.values()) {
+      counter++;
+      println("Listing gateway details of device #" + counter
+              + "\n\tFriendly name: " + gw.getFriendlyName()
+              + "\n\tPresentation URL: " + gw.getPresentationURL()
+              + "\n\tModel name: " + gw.getModelName()
+              + "\n\tModel number: " + gw.getModelNumber()
+              + "\n\tLocal interface address: " + gw.getLocalAddress().getHostAddress() + "\n");
+    }
+    // choose the first active gateway for the tests
+    GatewayDevice activeGW = gatewayDiscover.getValidGateway();
+    if (null != activeGW) {
+      println("Using gateway:" + activeGW.getFriendlyName());
+    } else {
+      println("No active gateway device found");
+      println("Stopping weupnp");
+      connectionWindow.setRetryUPnPButtonEnabled(true);
+      connectionWindow.setRetryUPnPButtonVisible(true);
+      return;
+    }
+    // testing PortMappingNumberOfEntries
+    Integer portMapCount = activeGW.getPortMappingNumberOfEntries();
+    println("GetPortMappingNumberOfEntries=" + (portMapCount != null ? portMapCount.toString() : "(unsupported)"));
+    // testing getGenericPortMappingEntry
+    PortMappingEntry portMapping0 = new PortMappingEntry();
+    if (activeGW.getGenericPortMappingEntry(0, portMapping0)) {
+      println("Portmapping #0 successfully retrieved (" + portMapping0.getPortMappingDescription() + ":" + portMapping0.getExternalPort() + ")");
+    } else {
+      println("Portmapping #0 retrival failed");
+    }
+    InetAddress localAddress = activeGW.getLocalAddress();
+    println("Using local address: " + localAddress.getHostAddress());
+    String externalIPAddress = activeGW.getExternalIPAddress();
+    println("External address: " + externalIPAddress);
+    println("Querying device to see if a port mapping already exists for port " + port);
+    PortMappingEntry portMapping = new PortMappingEntry();
+    if (activeGW.getSpecificPortMappingEntry(port, "TCP", portMapping)) {
+      println("Port " + port + " is already mapped. Aborting test.");
+      return;
+    } else {
+      println("Mapping free. Sending port mapping request for port " + port);
+      // enableUPnP static lease duration mapping
+      if (activeGW.addPortMapping(port, port, localAddress.getHostAddress(), "TCP", "ShowclixScanner UPnP")) {
+        println("Mapping SUCCESSFUL!");
+        connectionWindow.setRetryUPnPButtonVisible(false);
+        while (!serverSocket.isClosed()) {
+          Thread.sleep(500);
+        }
+        if (activeGW.deletePortMapping(port, "TCP")) {
+          println("Removed port mapping.");
+        } else {
+          println("Unable to remove port mapping :(");
+        }
+      } else {
+        println("Unable to map port. Connections from outside your LAN may be unavailable :(");
+        connectionWindow.setRetryUPnPButtonEnabled(true);
+        connectionWindow.setRetryUPnPButtonVisible(true);
+      }
+    }
+  }
+
+  public static void stopListening() {
+    if (serverSocket == null) return;
+    try {
+      serverSocket.close();
+    } catch (Exception e) {
+      System.out.println("Unable to stop serverSocket listening!");
       e.printStackTrace();
     }
   }
 
   public static void registerConnection(ClientConnection conn) {
     connections.add(conn);
+    println("Registered connection: " + conn.getAddress());
   }
 
   public static void writeHttpCookie(HttpCookie cookie) {
@@ -112,19 +231,44 @@ public class NetworkHandler {
       ClientConnection tempConnection;
       while (myIt.hasNext()) {
         tempConnection = myIt.next();
+//        killConnection(tempConnection);
         tempConnection.killConnection();
-        connections.remove(tempConnection);
+        connectionWindow.removeConnection(tempConnection.getConnectionPanel());
+        println("KILLALL: Killed connection " + tempConnection.getAddress());
       }
+      connections.clear();
     } catch (Exception e) {
-      System.out.println("Unable to close streams.");
+      println("Unable to close streams.");
+      e.printStackTrace();
     }
   }
 
   public static void writeString(String str) {
   }
 
-  public static String getAddress() {
-    return address;
+  /**
+   * Sets the action to take for all new incoming connections. This should be set by the Connections
+   * window. If this is changed and the Connections window JRadioButtons are not updated, the GUI
+   * will be inaccurate.
+   *
+   * @param mode 1 for ask, 2 for accept, 3 for deny
+   */
+  public static void setIncomingConnectionMode(int mode) {
+    if (mode < 1) {
+      mode = 1;
+    } else if (mode > 3) {
+      mode = 3;
+    }
+    incomingConnectionMode = mode;
+  }
+
+  /**
+   * Returns the current mode for incoming connections.
+   *
+   * @return 1 for ask, 2 for accept, 3 for deny
+   */
+  public static int getIncomingConnectionMode() {
+    return incomingConnectionMode;
   }
 
   public static boolean validIPAddress(String ipaddress) {
@@ -140,14 +284,17 @@ public class NetworkHandler {
       }
       return true;
     } catch (Exception e) {
-      System.out.println("Unable to verify valip IP address: " + ipaddress);
+      println("Unable to verify valip IP address: " + ipaddress);
       e.printStackTrace();
       return false;
     }
   }
 
   public static void println(String msg) {
-    connectionWindow.println(msg);
+    if (connectionWindow != null) {
+      connectionWindow.println(msg);
+    }
+    System.out.println(msg);
   }
 
   public static void println(String connectionName, String msg) {

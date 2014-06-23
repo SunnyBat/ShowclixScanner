@@ -17,7 +17,7 @@ import showclixscanner.gui.*;
 public class ShowclixScanner {
 
   private static String showclixLink;
-  public static final String VERSION = "1.0.3";
+  public static final String VERSION = "2.0.0.7.1";
   private static URL showclixURL;
   private static Setup setup;
   private static Status status;
@@ -30,6 +30,8 @@ public class ShowclixScanner {
   private static boolean updateProgram;
   protected static Update update;
   private static java.awt.Image showclixIcon;
+  private static List<Throwable> throwableList = new ArrayList();
+  private static boolean terminateProgram;
 
   /**
    * @param args the command line arguments
@@ -87,8 +89,11 @@ public class ShowclixScanner {
       Thread.sleep(250);
     }
     status = new Status();
-    if (showclixIcon == null) System.out.println("ERROR: ICON IS NULL");
-    status.setIconImage(showclixIcon);
+    if (showclixIcon == null) {
+      System.out.println("ERROR: ICON IS NULL");
+    } else {
+      status.setIconImage(showclixIcon);
+    }
     URLConnection inputConnection;
     InputStream textInputStream;
     BufferedReader myReader = null;
@@ -104,7 +109,7 @@ public class ShowclixScanner {
     outputFile = new File(System.getProperty("user.home") + "/Desktop/Showclix.html");
     int bytesRead = 0;
     mainLoop:
-    while (true) {
+    while (programRunning()) {
       startTime = System.currentTimeMillis();
       try {
         myWriter = new BufferedWriter(new FileWriter(outputFile));
@@ -134,6 +139,7 @@ public class ShowclixScanner {
             } catch (Exception e) {
               println("ERROR parsing value!", LOGTYPE.DEBUG);
               e.printStackTrace();
+              addError(e);
             }
           } else if (line.contains("<option value=")) {
             try {
@@ -151,6 +157,7 @@ public class ShowclixScanner {
             } catch (Exception e) {
               println("ERROR parsing value!", LOGTYPE.DEBUG);
               e.printStackTrace();
+              addError(e);
             }
           } else if (line.contains("class=\"ticket-select\"")) {
             try {
@@ -162,6 +169,7 @@ public class ShowclixScanner {
             } catch (Exception e) {
               println("ERROR parsing ticket ID!", LOGTYPE.DEBUG);
               e.printStackTrace();
+              addError(e);
             }
           } else if (line.equals("</tr>")) { // New list
             if (currentBadge != null) {
@@ -181,6 +189,7 @@ public class ShowclixScanner {
         double dataUsed = (double) ((int) ((double) bytesRead / 1024 / 1024 * 100)) / 100;
         status.setDataUsed(dataUsed, connectionSuccessCount, connectionErrorCount);
         e.printStackTrace();
+        addError(e);
       } finally {
         try {
           println("Closing streams...", LOGTYPE.NOTES);
@@ -240,6 +249,7 @@ public class ShowclixScanner {
           }
         } catch (Exception e) {
           e.printStackTrace();
+          addError(e);
         }
         if (currBadge.badgeType != null) {
           if (badges == null) {
@@ -292,13 +302,32 @@ public class ShowclixScanner {
         status.setRefreshTime("Program complete. Please close GUI when finished.");
         break mainLoop;
       }
-      while (System.currentTimeMillis() - startTime < secondsBetweenRefresh * 1000) {
+      while (System.currentTimeMillis() - startTime < secondsBetweenRefresh * 1000 && programRunning()) {
         status.setRefreshTime(secondsBetweenRefresh - (int) (System.currentTimeMillis() - startTime) / 1000);
         Thread.sleep(250);
       }
       status.clearConsole();
       badgeList.clear();
     }
+    System.out.println("Program ended.");
+  }
+
+  public static void terminateProgram() {
+    println("terminateProgram() called! Terminating program...", LOGTYPE.MINIMUM);
+    NetworkHandler.stopListening();
+    terminateProgram = true;
+  }
+
+  public static boolean programRunning() {
+    return !terminateProgram;
+  }
+
+  public static void addError(Throwable t) {
+    throwableList.add(t);
+  }
+
+  public static List<Throwable> getThrowableList() {
+    return throwableList;
   }
 
   public static void setRefreshTime(int seconds) {
@@ -426,6 +455,14 @@ public class ShowclixScanner {
    */
   public static void startUpdatingProgram() {
     updateProgram = true;
+  }
+
+  public static void startNewThread(Runnable run, String name) {
+    Thread newThread = new Thread(run);
+    newThread.setName(name);
+    newThread.setDaemon(false);
+    newThread.setPriority(Thread.NORM_PRIORITY); // Default, but just inc ase
+    newThread.start(); // Start the Thread
   }
 
   /**

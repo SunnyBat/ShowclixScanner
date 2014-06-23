@@ -6,7 +6,6 @@
  * 12 = ClientConnection accepted
  * 13 = ClientConnection rejected
  * 23 = Kill connection, we're done here
- * 65 = Send String to program (general use)
  * 72 = Sending cookie (which sends two Strings at a time, with the String lengths being sent first)
  * 103 = Cookies all sent, save them to Firefox
  * 
@@ -25,7 +24,7 @@ import java.util.*;
  * @author SunnyBat
  */
 public class ClientConnection {
-  
+
   private ConnectionPanel myPanel;
   private String address;
   private Socket mySocket;
@@ -33,7 +32,7 @@ public class ClientConnection {
   private OutputStream myOutput;
   private long lastConnectionTime;
   private int failCount;
-  
+
   public ClientConnection(Socket sock, ConnectionPanel p) {
     try {
       myPanel = p;
@@ -43,24 +42,28 @@ public class ClientConnection {
       address = mySocket.getInetAddress().getHostAddress();
       myInput = mySocket.getInputStream();
       myOutput = mySocket.getOutputStream();
-      ShowclixScanner.startBackgroundThread(new Runnable() {
-        @Override
-        public void run() {
-          while (myInput != null) {
-            listen();
-          }
-        }
-      });
       println("Stream loaded -- connection to client successful");
     } catch (Exception e) {
       e.printStackTrace();
     }
   }
-  
+
+  public void start() {
+    ShowclixScanner.startBackgroundThread(new Runnable() {
+      @Override
+      public void run() {
+        println("Listening for input");
+        while (!mySocket.isClosed()) {
+          listen();
+        }
+      }
+    }, "Thread for " + mySocket.getInetAddress().getHostAddress());
+  }
+
   public ConnectionPanel getConnectionPanel() {
     return myPanel;
   }
-  
+
   public ClientConnection(String adrs, Socket sock, InputStream in, OutputStream out) {
     myPanel = new ConnectionPanel();
     address = adrs;
@@ -68,14 +71,14 @@ public class ClientConnection {
     myInput = in;
     myOutput = out;
   }
-  
+
   public void listen() {
     try {
       int code = myInput.read();
       if (code == 23) {
         println("Kill packet found.");
         NetworkHandler.killConnection(this);
-      } else if (code == -1) {
+      }else if (code == -1) {
         println("Connection lost.");
         NetworkHandler.killConnection(this);
       }
@@ -96,6 +99,15 @@ public class ClientConnection {
     }
   }
   
+  public void sendWebsiteAddress(String address) {
+    try {
+      myOutput.write(86);
+      writeString(address);
+    } catch (Exception e) {
+      
+    }
+  }
+
   public void writeHttpCookie(HttpCookie cookie) {
     if (myOutput == null) {
       println("================NO OUTPUT TO ADDRESS " + address + "================");
@@ -112,7 +124,7 @@ public class ClientConnection {
       e.printStackTrace();
     }
   }
-  
+
   public void endCookies() {
     if (myOutput == null) {
       println("================NO OUTPUT TO ADDRESS " + address + "================");
@@ -124,7 +136,7 @@ public class ClientConnection {
       e.printStackTrace();
     }
   }
-  
+
   public void accept() {
     if (myOutput == null) {
       println("================NO OUTPUT TO ADDRESS " + address + "================");
@@ -135,8 +147,9 @@ public class ClientConnection {
     } catch (Exception e) {
       e.printStackTrace();
     }
+    start();
   }
-  
+
   public void reject() {
     if (myOutput == null) {
       println("================NO OUTPUT TO ADDRESS " + address + "================");
@@ -148,30 +161,39 @@ public class ClientConnection {
       e.printStackTrace();
     }
   }
-  
+
   public void killConnection() {
     try {
-      if (myInput != null) {
-        myInput.close();
-        myInput = null;
-      }
       if (myOutput != null) {
-        myOutput.write(23);
-        myOutput.close();
-        myOutput = null;
+        try {
+          myOutput.write(23);
+        } catch (Exception e) {
+          println("Unable to send kill packet.");
+        }
       }
-    } catch (IOException iOException) {
+    } catch (Exception iOException) {
       println("Unable to close streams.");
       iOException.printStackTrace();
     }
+    closeStreams();
   }
-  
+
+  private void closeStreams() {
+    if (mySocket != null) {
+      try {
+        mySocket.close();
+      } catch (IOException iOException) {
+        System.out.println("Unable to close socket!");
+      }
+    }
+  }
+
   public void writeString(String str) {
     if (myOutput == null) {
       println("================NO OUTPUT TO ADDRESS " + address + "================");
     } else {
       try {
-        myOutput.write(65);
+        //myOutput.write(65);
         myOutput.write(str.length());
         myOutput.write(str.getBytes());
       } catch (IOException iOException) {
@@ -179,12 +201,12 @@ public class ClientConnection {
       }
     }
   }
-  
+
   public String getAddress() {
     return address;
   }
-  
-  private void println(String msg) {
+
+  public void println(String msg) {
     System.out.println(msg);
     myPanel.println(msg);
     NetworkHandler.println(mySocket.getInetAddress().getHostAddress(), msg);

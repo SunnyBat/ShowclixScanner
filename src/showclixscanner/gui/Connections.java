@@ -5,6 +5,7 @@
 package showclixscanner.gui;
 
 import showclixscanner.NetworkHandler;
+import showclixscanner.ShowclixScanner;
 
 /**
  *
@@ -15,6 +16,29 @@ public class Connections extends javax.swing.JFrame {
   /** Creates new form Connections */
   public Connections() {
     initComponents();
+    customComponents();
+  }
+
+  private void customComponents() {
+    jButton3.setVisible(false);
+  }
+
+  public void setRetryUPnPButtonEnabled(final boolean enable) {
+    javax.swing.SwingUtilities.invokeLater(new Runnable() {
+      @Override
+      public void run() {
+        jButton3.setEnabled(enable);
+      }
+    });
+  }
+
+  public void setRetryUPnPButtonVisible(final boolean vis) {
+    javax.swing.SwingUtilities.invokeLater(new Runnable() {
+      @Override
+      public void run() {
+        jButton3.setVisible(vis);
+      }
+    });
   }
 
   public javax.swing.JTextArea getMainConsole() {
@@ -61,6 +85,7 @@ public class Connections extends javax.swing.JFrame {
   // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
   private void initComponents() {
 
+    JBGIncomingConnections = new javax.swing.ButtonGroup();
     jLabel1 = new javax.swing.JLabel();
     jTabbedPane1 = new javax.swing.JTabbedPane();
     jPanel1 = new javax.swing.JPanel();
@@ -68,10 +93,17 @@ public class Connections extends javax.swing.JFrame {
     jLabel2 = new javax.swing.JLabel();
     jScrollPane1 = new javax.swing.JScrollPane();
     jTextArea1 = new javax.swing.JTextArea();
+    jButton2 = new javax.swing.JButton();
+    jLabel3 = new javax.swing.JLabel();
+    jRadioButton1 = new javax.swing.JRadioButton();
+    jRadioButton2 = new javax.swing.JRadioButton();
+    jRadioButton3 = new javax.swing.JRadioButton();
+    jButton3 = new javax.swing.JButton();
 
     setDefaultCloseOperation(javax.swing.WindowConstants.DO_NOTHING_ON_CLOSE);
     setTitle("Connection Manager");
     setMinimumSize(getPreferredSize());
+    setResizable(false);
 
     jLabel1.setFont(new java.awt.Font("Tahoma", 1, 24)); // NOI18N
     jLabel1.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
@@ -94,6 +126,50 @@ public class Connections extends javax.swing.JFrame {
     jTextArea1.setRows(5);
     jScrollPane1.setViewportView(jTextArea1);
 
+    jButton2.setText("Stop Listening");
+    jButton2.setToolTipText("<html>\nWARNING:<br>\nThis will stop listening for new<br>\nconnections. The only way to<br>\nre-enable this function is by<br>\nrestarting the program!\n</html>");
+    jButton2.addActionListener(new java.awt.event.ActionListener() {
+      public void actionPerformed(java.awt.event.ActionEvent evt) {
+        jButton2ActionPerformed(evt);
+      }
+    });
+
+    jLabel3.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
+    jLabel3.setText("Incoming Connections");
+
+    JBGIncomingConnections.add(jRadioButton1);
+    jRadioButton1.setSelected(true);
+    jRadioButton1.setText("Ask Every Time");
+    jRadioButton1.addActionListener(new java.awt.event.ActionListener() {
+      public void actionPerformed(java.awt.event.ActionEvent evt) {
+        jRadioButton1ActionPerformed(evt);
+      }
+    });
+
+    JBGIncomingConnections.add(jRadioButton2);
+    jRadioButton2.setText("Allow");
+    jRadioButton2.addActionListener(new java.awt.event.ActionListener() {
+      public void actionPerformed(java.awt.event.ActionEvent evt) {
+        jRadioButton2ActionPerformed(evt);
+      }
+    });
+
+    JBGIncomingConnections.add(jRadioButton3);
+    jRadioButton3.setText("Deny");
+    jRadioButton3.addActionListener(new java.awt.event.ActionListener() {
+      public void actionPerformed(java.awt.event.ActionEvent evt) {
+        jRadioButton3ActionPerformed(evt);
+      }
+    });
+
+    jButton3.setText("Retry UPnP");
+    jButton3.setToolTipText("<html>\nThis button appears when the program<br>\nwas unable to open Port 9243 on your<br>\nrouter. If you're unable to open the<br>\nport after multiple attempts, wait about<br>\n24 hours and try again. If the problem<br>\npersists, contact your network<br>\nadministrator.\n</html>");
+    jButton3.addActionListener(new java.awt.event.ActionListener() {
+      public void actionPerformed(java.awt.event.ActionEvent evt) {
+        jButton3ActionPerformed(evt);
+      }
+    });
+
     javax.swing.GroupLayout jPanel1Layout = new javax.swing.GroupLayout(jPanel1);
     jPanel1.setLayout(jPanel1Layout);
     jPanel1Layout.setHorizontalGroup(
@@ -101,9 +177,18 @@ public class Connections extends javax.swing.JFrame {
       .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel1Layout.createSequentialGroup()
         .addContainerGap()
         .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
-          .addComponent(jScrollPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 469, Short.MAX_VALUE)
-          .addComponent(jButton1, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-          .addComponent(jLabel2, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+          .addComponent(jLabel2, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+          .addGroup(jPanel1Layout.createSequentialGroup()
+            .addComponent(jScrollPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 342, Short.MAX_VALUE)
+            .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+            .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+              .addComponent(jButton1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+              .addComponent(jButton2, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+              .addComponent(jLabel3, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+              .addComponent(jRadioButton1)
+              .addComponent(jRadioButton2)
+              .addComponent(jRadioButton3)
+              .addComponent(jButton3, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))))
         .addContainerGap())
     );
     jPanel1Layout.setVerticalGroup(
@@ -112,9 +197,22 @@ public class Connections extends javax.swing.JFrame {
         .addContainerGap()
         .addComponent(jLabel2)
         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-        .addComponent(jScrollPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 257, Short.MAX_VALUE)
-        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-        .addComponent(jButton1)
+        .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+          .addGroup(jPanel1Layout.createSequentialGroup()
+            .addComponent(jButton1)
+            .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+            .addComponent(jButton2)
+            .addGap(18, 18, 18)
+            .addComponent(jLabel3)
+            .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+            .addComponent(jRadioButton1)
+            .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+            .addComponent(jRadioButton2)
+            .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+            .addComponent(jRadioButton3)
+            .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 113, Short.MAX_VALUE)
+            .addComponent(jButton3))
+          .addComponent(jScrollPane1))
         .addContainerGap())
     );
 
@@ -145,11 +243,53 @@ public class Connections extends javax.swing.JFrame {
     // TODO add your handling code here:
     NetworkHandler.killAllConnections();
   }//GEN-LAST:event_jButton1ActionPerformed
+
+  private void jRadioButton1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jRadioButton1ActionPerformed
+    // TODO add your handling code here:
+    NetworkHandler.setIncomingConnectionMode(1);
+  }//GEN-LAST:event_jRadioButton1ActionPerformed
+
+  private void jRadioButton2ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jRadioButton2ActionPerformed
+    // TODO add your handling code here:
+    NetworkHandler.setIncomingConnectionMode(2);
+  }//GEN-LAST:event_jRadioButton2ActionPerformed
+
+  private void jRadioButton3ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jRadioButton3ActionPerformed
+    // TODO add your handling code here:
+    NetworkHandler.setIncomingConnectionMode(3);
+  }//GEN-LAST:event_jRadioButton3ActionPerformed
+
+  private void jButton3ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton3ActionPerformed
+    // TODO add your handling code here:
+    ShowclixScanner.startNewThread(new Runnable() {
+      @Override
+      public void run() {
+        try {
+          NetworkHandler.enableUPnP();
+        } catch (Exception e) {
+          e.printStackTrace();
+        }
+      }
+    }, "UPnP Port Mapping Thread");
+  }//GEN-LAST:event_jButton3ActionPerformed
+
+  private void jButton2ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton2ActionPerformed
+    // TODO add your handling code here:
+    NetworkHandler.stopListening();
+  }//GEN-LAST:event_jButton2ActionPerformed
+
   // Variables declaration - do not modify//GEN-BEGIN:variables
+  private javax.swing.ButtonGroup JBGIncomingConnections;
   private javax.swing.JButton jButton1;
+  private javax.swing.JButton jButton2;
+  private javax.swing.JButton jButton3;
   private javax.swing.JLabel jLabel1;
   private javax.swing.JLabel jLabel2;
+  private javax.swing.JLabel jLabel3;
   private javax.swing.JPanel jPanel1;
+  private javax.swing.JRadioButton jRadioButton1;
+  private javax.swing.JRadioButton jRadioButton2;
+  private javax.swing.JRadioButton jRadioButton3;
   private javax.swing.JScrollPane jScrollPane1;
   private javax.swing.JTabbedPane jTabbedPane1;
   private javax.swing.JTextArea jTextArea1;

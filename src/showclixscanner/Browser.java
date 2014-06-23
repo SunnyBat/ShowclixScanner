@@ -346,4 +346,8 @@ public class Browser {
 //      ErrorManagement.fatalError();
     }
   }
+  
+  public static String getShowclixLink() {
+    return showclixLink;
+  }
 }

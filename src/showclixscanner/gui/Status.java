@@ -16,18 +16,23 @@ public class Status extends javax.swing.JFrame {
   /** Creates new form Status */
   public Status() {
     initComponents();
+    customComponents();
     setVisible(true);
+  }
+  
+  private void customComponents() {
+    setTitle("ShowclixScanner v"+ShowclixScanner.VERSION);
   }
 
   public void println(String text) {
     jTextArea1.append(text + "\n");
     jTextArea1.setCaretPosition(jTextArea1.getText().length());
   }
-  
+
   public void clearConsole() {
     jTextArea1.setText("");
   }
-  
+
   public String getConsoleOutputLevel() {
     return "Minimum";
   }
@@ -35,17 +40,23 @@ public class Status extends javax.swing.JFrame {
   public void setRefreshTime(int time) {
     setRefreshTime("Checking in " + time + " seconds");
   }
-  
+
   public void setRefreshTime(String text) {
     jLabelRefreshingIn.setText(text);
   }
-  
+
   public void setDataUsed(double MB, int times, int failTimes) {
     jLabelDataUsed.setText("Data used: " + MB + "MB (" + times + " successes, " + failTimes + " fails)");
   }
-  
+
   public void setTicketsFound(String ticketsFound) {
     jLabelTicketsFound.setText("Tickets Found: " + ticketsFound);
+  }
+  
+  @Override
+  public void dispose() {
+    ShowclixScanner.terminateProgram();
+    super.dispose();
   }
 
   /** This method is called from within the constructor to
@@ -69,8 +80,9 @@ public class Status extends javax.swing.JFrame {
     jScrollPane1 = new javax.swing.JScrollPane();
     jTextArea1 = new javax.swing.JTextArea();
     jLabel9 = new javax.swing.JLabel();
+    jButton3 = new javax.swing.JButton();
 
-    setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
+    setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
     setTitle("Showclix Monitor");
 
     jLabel1.setFont(new java.awt.Font("Tahoma", 0, 36)); // NOI18N
@@ -137,6 +149,13 @@ public class Status extends javax.swing.JFrame {
         .addComponent(jScrollPane1, javax.swing.GroupLayout.PREFERRED_SIZE, 326, javax.swing.GroupLayout.PREFERRED_SIZE))
     );
 
+    jButton3.setText("Print Throwables");
+    jButton3.addActionListener(new java.awt.event.ActionListener() {
+      public void actionPerformed(java.awt.event.ActionEvent evt) {
+        jButton3ActionPerformed(evt);
+      }
+    });
+
     javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
     getContentPane().setLayout(layout);
     layout.setHorizontalGroup(
@@ -153,12 +172,14 @@ public class Status extends javax.swing.JFrame {
             .addComponent(jSpinner1, javax.swing.GroupLayout.PREFERRED_SIZE, 131, javax.swing.GroupLayout.PREFERRED_SIZE)
             .addGap(41, 41, 41)
             .addComponent(jButton1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+          .addComponent(jButton2, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
           .addGroup(layout.createSequentialGroup()
-            .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-              .addComponent(jLabelDataUsed)
-              .addComponent(jLabelTicketsFound))
+            .addComponent(jLabelDataUsed)
             .addGap(0, 0, Short.MAX_VALUE))
-          .addComponent(jButton2, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+          .addGroup(layout.createSequentialGroup()
+            .addComponent(jLabelTicketsFound)
+            .addGap(188, 188, 188)
+            .addComponent(jButton3, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)))
         .addContainerGap())
     );
     layout.setVerticalGroup(
@@ -171,7 +192,9 @@ public class Status extends javax.swing.JFrame {
         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
         .addComponent(jLabelDataUsed)
         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-        .addComponent(jLabelTicketsFound)
+        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+          .addComponent(jLabelTicketsFound)
+          .addComponent(jButton3))
         .addGap(18, 18, 18)
         .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
           .addComponent(jLabelConsoleOutput)
@@ -194,7 +217,7 @@ public class Status extends javax.swing.JFrame {
   private void jSpinner1StateChanged(javax.swing.event.ChangeEvent evt) {//GEN-FIRST:event_jSpinner1StateChanged
     // TODO add your handling code here:
     System.out.println("State changed!");
-    ShowclixScanner.setPrintLevel((ShowclixScanner.LOGTYPE)((javax.swing.JSpinner)(evt.getSource())).getValue());
+    ShowclixScanner.setPrintLevel((ShowclixScanner.LOGTYPE) ((javax.swing.JSpinner) (evt.getSource())).getValue());
   }//GEN-LAST:event_jSpinner1StateChanged
 
   private void jButton1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton1ActionPerformed
@@ -218,10 +241,33 @@ public class Status extends javax.swing.JFrame {
     pack();
   }//GEN-LAST:event_jButton2ActionPerformed
 
+  private void jButton3ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton3ActionPerformed
+    // TODO add your handling code here:
+    java.util.List<Throwable> list = ShowclixScanner.getThrowableList();
+    java.util.Iterator<Throwable> iterate = list.iterator();
+    StackTraceElement[] ste;
+    String lineSeparator = System.getProperty("line.separator");
+    String message = "";
+    while (iterate.hasNext()) {
+      Throwable t = iterate.next();
+      ste = t.getStackTrace();
+      message += "---->" + t.getMessage() + lineSeparator;
+      for (int a = 0; a < ste.length; a++) {
+        message += "at ";
+        message += ste[a];
+        message += lineSeparator;
+      }
+    }
+    if (message.equals("")) {
+      message = "No Throwables found.";
+    }
+    ShowclixScanner.println(message, ShowclixScanner.LOGTYPE.MINIMUM);
+  }//GEN-LAST:event_jButton3ActionPerformed
   // Variables declaration - do not modify//GEN-BEGIN:variables
   private javax.swing.JPanel consoleOutEnclosurePanel;
   private javax.swing.JButton jButton1;
   private javax.swing.JButton jButton2;
+  private javax.swing.JButton jButton3;
   private javax.swing.JLabel jLabel1;
   private javax.swing.JLabel jLabel9;
   private javax.swing.JLabel jLabelConsoleOutput;

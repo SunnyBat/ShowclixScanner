@@ -9,20 +9,38 @@ package showclixscanner.gui;
  * @author SunnyBat
  */
 public class ApproveForm extends javax.swing.JFrame {
-  
+
   private boolean approve;
   private java.util.concurrent.CountDownLatch countdown;
 
   /** Creates new form ApproveForm */
   public ApproveForm() {
     initComponents();
+    customComponents();
   }
-  
+
   public ApproveForm(java.util.concurrent.CountDownLatch mCD) {
-    initComponents();
     countdown = mCD;
+    initComponents();
+    customComponents();
   }
-  
+
+  public final void customComponents() {
+    showclixscanner.ShowclixScanner.startBackgroundThread(new Runnable() {
+      @Override
+      public void run() {
+        try {
+          Thread.sleep(60000);
+        } catch (InterruptedException interruptedException) {
+          return;
+        }
+        if (isVisible()) {
+          setApprove(false);
+        }
+      }
+    }, "ApproveForm Thread");
+  }
+
   public void setHeader(final String txt) {
     javax.swing.SwingUtilities.invokeLater(new Runnable() {
       @Override
@@ -31,7 +49,7 @@ public class ApproveForm extends javax.swing.JFrame {
       }
     });
   }
-  
+
   public void setDescription(final String txt) {
     javax.swing.SwingUtilities.invokeLater(new Runnable() {
       @Override
@@ -40,7 +58,7 @@ public class ApproveForm extends javax.swing.JFrame {
       }
     });
   }
-  
+
   public void setApproveButtonText(final String txt) {
     javax.swing.SwingUtilities.invokeLater(new Runnable() {
       @Override
@@ -49,7 +67,7 @@ public class ApproveForm extends javax.swing.JFrame {
       }
     });
   }
-  
+
   public void setDisapproveButtonText(final String txt) {
     javax.swing.SwingUtilities.invokeLater(new Runnable() {
       @Override
@@ -58,11 +76,11 @@ public class ApproveForm extends javax.swing.JFrame {
       }
     });
   }
-  
+
   public boolean isApproved() {
     return approve;
   }
-  
+
   private void setApprove(boolean b) {
     approve = b;
     setVisible(false);
@@ -157,7 +175,6 @@ public class ApproveForm extends javax.swing.JFrame {
     // TODO add your handling code here:
     setApprove(false);
   }//GEN-LAST:event_JBDisapproveActionPerformed
-
   // Variables declaration - do not modify//GEN-BEGIN:variables
   private javax.swing.JButton JBApprove;
   private javax.swing.JButton JBDisapprove;

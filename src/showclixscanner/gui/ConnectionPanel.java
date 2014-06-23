@@ -4,6 +4,8 @@
  */
 package showclixscanner.gui;
 
+import showclixscanner.NetworkHandler;
+
 /**
  *
  * @author SunnyBat
@@ -128,7 +130,7 @@ public class ConnectionPanel extends javax.swing.JPanel {
   private void jButton1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton1ActionPerformed
     // KILL CONNECTION HERE
     if (myConnection != null) {
-      myConnection.killConnection();
+      NetworkHandler.killConnection(myConnection);
     }
   }//GEN-LAST:event_jButton1ActionPerformed
   // Variables declaration - do not modify//GEN-BEGIN:variables
