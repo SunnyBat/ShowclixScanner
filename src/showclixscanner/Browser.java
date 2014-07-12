@@ -45,11 +45,11 @@ public class Browser {
 ////    curl --data "email=api@example.com&password=opensesame" -X POST https://admin.showclix.com/api/registration
 ////
 ////{"token":"<token>","user_id":"<user>","seller_id":"<seller>","name":{"first":"<user_first>","last":"<user_last>"},"org":"<org>","avatar":"","locale":"en_US"}
-//    
+//
 //    URL myurl = new URL("https://developer.showclix.com/registration");
 //    HttpsURLConnection con;
 //    String query = "email=Sunnybat@yahoo.com&password=password";
-//    
+//
 //    con = (HttpsURLConnection) myurl.openConnection();
 //    con.setRequestMethod("POST"); // Tell website that we want to buy tickets with the specified query, added tons of extra headers to ensure connection
 //    con.setRequestProperty("Content-length", String.valueOf(query.length()));
@@ -88,13 +88,15 @@ public class Browser {
     setShowclixLink("https://www.showclix.com/event/" + ID);
   }
 
-  public static void processQuery(String query) throws Exception {
+  public static void processQuery(String query, CookieManager cManager) throws Exception {
     String httpsURL = showclixLink;
     URL myurl = new URL(httpsURL);
     HttpsURLConnection con;
     //query = "level[3976804]=0&level[3976806]=1&level[3976811]=0"; // Test query for if you want to make sure this method works (which it does!)
 
-    CookieManager cManager = new CookieManager(); // Open CookieManager so it starts capturing cookies
+    if (cManager == null) {
+      cManager = new CookieManager(); // Open CookieManager so it starts capturing cookies
+    }
     CookieHandler.setDefault(cManager);
 
     /* Start by connecting to website so CookieManager can grab new cookies */
@@ -102,7 +104,7 @@ public class Browser {
     con.setRequestMethod("POST"); // Tell website that we want to buy tickets with the specified query, added tons of extra headers to ensure connection
     con.setRequestProperty("Content-length", String.valueOf(query.length()));
     con.setRequestProperty("Content-Type", "application/x-www-form-urlencoded"); // Fairly certain this is the only thing we need, but whatever
-    con.setRequestProperty("User-Agent", "Mozilla/5.0");
+    con.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 6.1; WOW64; rv:30.0) Gecko/20100101 Firefox/30.0");
     con.setRequestProperty("Referer", httpsURL);
     con.setRequestProperty("Connection", "keep-alive");
     con.setRequestProperty("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8");
@@ -113,17 +115,18 @@ public class Browser {
     con.setDoOutput(true);
     con.setDoInput(true);
 
+    String openURL = showclixLink;
     /* Write POST query to page to reserve tickets (and update cookies if necessary, but that really shouldn't happen) */
     try (DataOutputStream output = new DataOutputStream(con.getOutputStream())) { // Actually open website connection
       output.writeBytes(query); // Send POST information (above) to website
       ShowclixScanner.println("Resp Code:" + con.getResponseCode(), ShowclixScanner.LOGTYPE.DEBUG);
       ShowclixScanner.println("Resp Message:" + con.getResponseMessage(), ShowclixScanner.LOGTYPE.DEBUG);
-      ShowclixScanner.println("URL=" + con.getURL().toString());
       if (con.getResponseCode() >= 400) { // Error page returned... No tickets reserved :(
         ShowclixScanner.println("ERROR detected while receiving server response!", ShowclixScanner.LOGTYPE.MINIMUM);
         openLinkInBrowser(showclixLink);
         return;
       }
+      openURL = con.getURL().toString();
     } catch (Exception e) {
       ShowclixScanner.println("ERROR connecting to OutputStream!");
       e.printStackTrace();
@@ -134,19 +137,35 @@ public class Browser {
     /* Open new page in Firefox */
     CookieStore cookieJar = cManager.getCookieStore();
     List<HttpCookie> cookies = cookieJar.getCookies();
-    ShowclixScanner.println("````COOKIES````");
+    ShowclixScanner.println("````COOKIES````", ShowclixScanner.LOGTYPE.DEBUG);
     for (HttpCookie cookie : cookies) {
       ShowclixScanner.println(cookie.getName() + " : " + cookie.getValue(), ShowclixScanner.LOGTYPE.DEBUG);
       NetworkHandler.writeHttpCookie(cookie);
     }
     NetworkHandler.endCookies();
     if (shouldKillFirefox()) {
+      ShowclixScanner.println("PLEASE NOTE: Program is sending the close command to Firefox. Please ensure that ALL Firefox windows have been CLOSED, otherwise the program will not put the reserved tickets in Firefox.", ShowclixScanner.LOGTYPE.MINIMUM);
       ProcessHandler.killFirefox();
+      long startTime = System.currentTimeMillis();
+      boolean set = false;
       while (!DatabaseManager.isDatabaseAvailable()) { // Wait for Firefox to save changes to the cookie database
-        Thread.sleep(100);
+        Thread.sleep(500);
+        System.out.println("Waiting...");
+        if (!set && System.currentTimeMillis() - startTime > 10000) {
+          ShowclixScanner.setForceKillFirefoxButtonVisible(true);
+          set = true;
+          ShowclixScanner.println("Kill Firefox option now available.");
+        }
       }
       ShowclixScanner.println("Database deemed available.", ShowclixScanner.LOGTYPE.NOTES);
-      DatabaseManager.writeCookies(cookies);
+      if (DatabaseManager.writeCookies(cookies)) {
+        if (openURL.contains("showclix.com/reservation/") && shouldKillFirefox()) {
+          setShowclixLink(openURL);
+        }
+        ShowclixScanner.println("URL=" + showclixLink, ShowclixScanner.LOGTYPE.MINIMUM);
+      } else {
+        ShowclixScanner.println("Unable to write cookies to Firefox database!", ShowclixScanner.LOGTYPE.MINIMUM);
+      }
     }
     openLinkInBrowser(showclixLink);
   }
@@ -156,6 +175,7 @@ public class Browser {
   }
 
   public static void openLinkInBrowser(String link) {
+    System.out.println("OPENING LINK!!!!!! :: " + link);
     Desktop desktop = Desktop.isDesktopSupported() ? Desktop.getDesktop() : null;
     if (desktop != null && desktop.isSupported(Desktop.Action.BROWSE)) {
       try {
@@ -170,6 +190,10 @@ public class Browser {
 
   public static void openLinkInBrowser(URI uri) throws Exception {
     Desktop.getDesktop().browse(uri);
+  }
+
+  public static String getShowclixLink() {
+    return showclixLink;
   }
 
   public static int readShowclixInventory() {
@@ -230,7 +254,24 @@ public class Browser {
       String allText = "Patch Notes:" + lineSeparator;
       while ((line = myReader.readLine()) != null) {
         line = line.trim();
-        allText += line + lineSeparator;
+        if (line.startsWith("TOKEN:")) {
+          try {
+            String d = line.substring(6);
+            if (d.startsWith("SETSHOWCLIXID:")) { // NOTE: Currently this will do nothing, as Setup will override this action.
+              String load = d.substring(14);
+              System.out.println("Load = " + load);
+              setShowclixLink(Integer.parseInt(load));
+            } //else if (d.startsWith("")) {
+//              String load = d.substring(0);
+//              System.out.println("Load = " + load);
+//              setShowclixID(Integer.parseInt(load));
+//            }
+          } catch (NumberFormatException numberFormatException) {
+            ShowclixScanner.println("Unable to set token: " + line, ShowclixScanner.LOGTYPE.MINIMUM);
+          }
+        } else {
+          allText += line + lineSeparator;
+        }
       }
       versionNotes = allText.trim();
     } catch (Exception e) {
@@ -251,11 +292,9 @@ public class Browser {
   }
 
   /**
-   * Checks whether or not an update to the program is available. Note that this compares the file
-   * sizes between the current file and the file on the Dropbox server. This means that if ANY
-   * modification is made to the JAR file, it's likely to trigger an update.
-   * This THEORETICALLY works well. We'll find out whether or not it will actually work in
-   * practice.
+   * Checks whether or not an update to the program is available. Note that this compares the file sizes between the current file and the file on the
+   * Dropbox server. This means that if ANY modification is made to the JAR file, it's likely to trigger an update. This THEORETICALLY works well.
+   * We'll find out whether or not it will actually work in practice.
    *
    * @return True if an update is available, false if not.
    */
@@ -284,10 +323,8 @@ public class Browser {
   }
 
   /**
-   * Downloads the latest JAR file from the Dropbox server. Note that this automatically closes
-   * the
-   * program once finished. Also note that once this is run, the program WILL eventually close,
-   * either through finishing the update or failing to properly update.
+   * Downloads the latest JAR file from the Dropbox server. Note that this automatically closes the program once finished. Also note that once this is
+   * run, the program WILL eventually close, either through finishing the update or failing to properly update.
    */
   public static void updateProgram() {
     try {
@@ -345,9 +382,5 @@ public class Browser {
 //      ErrorManagement.showErrorWindow("ERROR updating the program", "The program was unable to successfully download the update. If the problem continues, please manually download the latest version at " + updateURL.getPath(), e);
 //      ErrorManagement.fatalError();
     }
-  }
-  
-  public static String getShowclixLink() {
-    return showclixLink;
   }
 }

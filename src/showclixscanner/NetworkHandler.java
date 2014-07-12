@@ -1,11 +1,10 @@
 package showclixscanner;
 
 import java.net.*;
-import java.io.*;
 import java.util.*;
 import showclixscanner.gui.*;
 import java.util.concurrent.CountDownLatch;
-import org.wetorrent.upnp.*;
+import org.bitlet.weupnp.*;
 
 /**
  *
@@ -15,16 +14,18 @@ public class NetworkHandler {
 
   private static ServerSocket serverSocket;
   private static final int port = 9243;
-  private static List<HttpCookie> cookies = new ArrayList();
+  private static int incomingConnectionMode = 1;
+  private static volatile boolean usingUPnP;
+  private static final List<HttpCookie> cookies = new ArrayList();
   private static volatile List<ClientConnection> connections = new ArrayList();
   private static Connections connectionWindow;
   private static ApproveForm approve;
-  private static int incomingConnectionMode = 1;
 
   public static void listenForConnections() {
     try {
       connectionWindow = new Connections();
       connectionWindow.setVisible(true);
+      serverSocket = new ServerSocket(port);
       ShowclixScanner.startNewThread(new Runnable() {
         @Override
         public void run() {
@@ -35,7 +36,6 @@ public class NetworkHandler {
           }
         }
       }, "UPnP Port Mapping Thread");
-      serverSocket = new ServerSocket(port);
       while (!serverSocket.isClosed()) {
         println("Listening on port " + port);
         Socket mySocket = null;
@@ -61,7 +61,8 @@ public class NetworkHandler {
             }
           });
           println("Waiting for connection approval...");
-          countdown.await();
+          countdown.await(60, java.util.concurrent.TimeUnit.SECONDS);
+          approve.dispose();
           if (!approve.isApproved()) {
             println("Connection DISAPPROVED, killing connection...");
             con.reject();
@@ -95,14 +96,49 @@ public class NetworkHandler {
         }
         registerConnection(con);
       }
-      connectionWindow.dispose();
+      if (!ShowclixScanner.programRunning()) {
+        connectionWindow.dispose();
+      }
     } catch (Exception e) {
       e.printStackTrace();
     }
   }
 
+  public static void closeConnectionWindow() {
+    if (connectionWindow != null) {
+      connectionWindow.dispose();
+    }
+  }
+
+  /**
+   * Checks to see whether connections are available. This checks for if the ServerSocket is open (listening for new connections) or if there are any
+   * active connections.
+   *
+   * @return True if connections are available, false if not
+   */
+  public static boolean connectionsAvailable() {
+    if (serverSocket == null) {
+      return false;
+    }
+    if (!connections.isEmpty()) {
+      return true;
+    } else {
+      return !serverSocket.isClosed();
+    }
+  }
+
   public static void enableUPnP() throws Exception {
+    if (serverSocket == null) {
+      println("ERROR enabling UPnP: serverSocket not initialized!");
+      return;
+    }
+    if (usingUPnP) {
+      println("ERROR enabling UPnP: UPnP is already in use!");
+      return;
+    }
+    usingUPnP = true;
     connectionWindow.setRetryUPnPButtonEnabled(false);
+    connectionWindow.setRetryUPnPButtonText("Opening Port...");
     println("Starting weupnp");
     GatewayDiscover gatewayDiscover = new GatewayDiscover();
     println("Looking for Gateway Devices...");
@@ -111,7 +147,8 @@ public class NetworkHandler {
       println("No gateways found");
       println("Stopping weupnp");
       connectionWindow.setRetryUPnPButtonEnabled(true);
-      connectionWindow.setRetryUPnPButtonVisible(true);
+      connectionWindow.setRetryUPnPButtonText("Retry UPnP");
+      usingUPnP = false;
       return;
     }
     println(gateways.size() + " gateway(s) found\n");
@@ -119,11 +156,11 @@ public class NetworkHandler {
     for (GatewayDevice gw : gateways.values()) {
       counter++;
       println("Listing gateway details of device #" + counter
-              + "\n\tFriendly name: " + gw.getFriendlyName()
-              + "\n\tPresentation URL: " + gw.getPresentationURL()
-              + "\n\tModel name: " + gw.getModelName()
-              + "\n\tModel number: " + gw.getModelNumber()
-              + "\n\tLocal interface address: " + gw.getLocalAddress().getHostAddress() + "\n");
+          + "\n\tFriendly name: " + gw.getFriendlyName()
+          + "\n\tPresentation URL: " + gw.getPresentationURL()
+          + "\n\tModel name: " + gw.getModelName()
+          + "\n\tModel number: " + gw.getModelNumber()
+          + "\n\tLocal interface address: " + gw.getLocalAddress().getHostAddress() + "\n");
     }
     // choose the first active gateway for the tests
     GatewayDevice activeGW = gatewayDiscover.getValidGateway();
@@ -133,7 +170,8 @@ public class NetworkHandler {
       println("No active gateway device found");
       println("Stopping weupnp");
       connectionWindow.setRetryUPnPButtonEnabled(true);
-      connectionWindow.setRetryUPnPButtonVisible(true);
+      connectionWindow.setRetryUPnPButtonText("Retry UPnP");
+      usingUPnP = false;
       return;
     }
     // testing PortMappingNumberOfEntries
@@ -154,31 +192,49 @@ public class NetworkHandler {
     PortMappingEntry portMapping = new PortMappingEntry();
     if (activeGW.getSpecificPortMappingEntry(port, "TCP", portMapping)) {
       println("Port " + port + " is already mapped. Aborting test.");
+      connectionWindow.setRetryUPnPButtonText("Retry UPnP");
+      connectionWindow.setRetryUPnPButtonEnabled(true);
+      usingUPnP = false;
       return;
     } else {
       println("Mapping free. Sending port mapping request for port " + port);
       // enableUPnP static lease duration mapping
       if (activeGW.addPortMapping(port, port, localAddress.getHostAddress(), "TCP", "ShowclixScanner UPnP")) {
         println("Mapping SUCCESSFUL!");
-        connectionWindow.setRetryUPnPButtonVisible(false);
-        while (!serverSocket.isClosed()) {
+        connectionWindow.setRetryUPnPButtonEnabled(true);
+        connectionWindow.setRetryUPnPButtonText("Close UPnP");
+        while (!serverSocket.isClosed() && usingUPnP) {
           Thread.sleep(500);
         }
+        connectionWindow.setRetryUPnPButtonEnabled(false);
         if (activeGW.deletePortMapping(port, "TCP")) {
           println("Removed port mapping.");
         } else {
           println("Unable to remove port mapping :(");
         }
+        connectionWindow.setRetryUPnPButtonText("Open UPnP");
+        connectionWindow.setRetryUPnPButtonEnabled(true);
       } else {
         println("Unable to map port. Connections from outside your LAN may be unavailable :(");
         connectionWindow.setRetryUPnPButtonEnabled(true);
-        connectionWindow.setRetryUPnPButtonVisible(true);
+        connectionWindow.setRetryUPnPButtonText("Retry UPnP");
       }
     }
+    usingUPnP = false;
+  }
+
+  public static void closeUPnP() {
+    usingUPnP = false;
+  }
+
+  public static boolean usingUPnP() {
+    return usingUPnP;
   }
 
   public static void stopListening() {
-    if (serverSocket == null) return;
+    if (serverSocket == null) {
+      return;
+    }
     try {
       serverSocket.close();
     } catch (Exception e) {
@@ -237,6 +293,7 @@ public class NetworkHandler {
         println("KILLALL: Killed connection " + tempConnection.getAddress());
       }
       connections.clear();
+      println("All connections killed.");
     } catch (Exception e) {
       println("Unable to close streams.");
       e.printStackTrace();
@@ -247,9 +304,8 @@ public class NetworkHandler {
   }
 
   /**
-   * Sets the action to take for all new incoming connections. This should be set by the Connections
-   * window. If this is changed and the Connections window JRadioButtons are not updated, the GUI
-   * will be inaccurate.
+   * Sets the action to take for all new incoming connections. This should be set by the Connections window. If this is changed and the Connections
+   * window JRadioButtons are not updated, the GUI will be inaccurate.
    *
    * @param mode 1 for ask, 2 for accept, 3 for deny
    */

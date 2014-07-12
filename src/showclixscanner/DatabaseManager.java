@@ -11,12 +11,11 @@ import java.util.*;
  */
 public class DatabaseManager {
 
-  private static String databaseDirectory = "C:\\Users\\SunnyBat\\AppData\\Roaming\\Mozilla\\Firefox\\Profiles\\febeprof.OldProfile\\";
+  private static String databaseDirectory = "C:\\Users\\NoUser\\AppData\\Roaming\\Mozilla\\Firefox\\Profiles\\NoProfile.Selected\\";
 
   /**
-   * Sets the directory that the Firefox cookie database is located in. NOTE that if the directory
-   * does NOT contain a cookie database, it WILL NOT BE SET and the previous directory will be used
-   * instead!
+   * Sets the directory that the Firefox cookie database is located in. NOTE that if the directory does NOT contain a cookie database, it WILL NOT BE
+   * SET and the previous directory will be used instead!
    *
    * @param dir The new directory that the Firefox cookie database is located in
    */
@@ -41,6 +40,28 @@ public class DatabaseManager {
     return databaseDirectory;
   }
 
+  public static void deleteDatabaseLockFiles() {
+    if (ProcessHandler.isProcessRunging("firefox.exe")) {
+      ShowclixScanner.println("ERROR: Firefox is still running -- program cannot delete files!", ShowclixScanner.LOGTYPE.MINIMUM);
+      return;
+    } else {
+      File databaseUseFile1 = new File(databaseDirectory + "cookies.sqlite-wal");
+      File databaseUseFile2 = new File(databaseDirectory + "cookies.sqlite-shm");
+      databaseUseFile1.delete();
+      databaseUseFile2.delete();
+    }
+  }
+
+  /**
+   * Check whether or not the current database directory is a valid directory. This simply checks whether or not the database file exists -- it
+   * doesn't check whether or not it can currently be read from or written to.
+   *
+   * @return True if valid, false if not
+   */
+  public static boolean isValidDatabase() {
+    return new File(databaseDirectory + "cookies.sqlite").exists();
+  }
+
   /**
    * Checks whether or not the cookie database is in use.
    *
@@ -49,33 +70,31 @@ public class DatabaseManager {
   public static boolean isDatabaseAvailable() {
     File databaseUseFile1 = new File(databaseDirectory + "cookies.sqlite-wal");
     File databaseUseFile2 = new File(databaseDirectory + "cookies.sqlite-shm");
-    if (!databaseUseFile1.exists() && !databaseUseFile2.exists()) {
-      return true;
-    } else {
-      return false;
-    }
+    return !databaseUseFile1.exists() && !databaseUseFile2.exists();
   }
 
   /**
-   * Reads ALL cookies currently in the Firefox cookie database and prints them out. Note that this
-   * really shouldn't be used very much, as it's preferred to only get cookies from a specific
-   * domain using {@link #readCookies(java.lang.String)}.
+   * Reads ALL cookies currently in the Firefox cookie database and prints them out. Note that this really shouldn't be used very much, as it's
+   * preferred to only get cookies from a specific domain using {@link #readCookies(java.lang.String)}.
    */
   public static void readCookies() {
     readCookies("");
   }
 
   /**
-   * Reads the cookies currently in the Firefox cookie database and prints out the ones belonging
-   * to the given domain. The domain should be somthing like "example.com"
+   * Reads the cookies currently in the Firefox cookie database and prints out the ones belonging to the given domain. The domain should be somthing
+   * like "example.com"
    *
    * @param filterDomain The domain to search for
    */
   public static void readCookies(String filterDomain) {
+    if (!isValidDatabase()) {
+      ShowclixScanner.println("ERROR: Non-valid database!");
+      return;
+    }
     Connection connection;
     ResultSet resultSet;
     Statement statement;
-    List<String> nameList = new ArrayList();
     try {
       Class.forName("org.sqlite.JDBC");
       connection = DriverManager.getConnection("jdbc:sqlite:" + databaseDirectory + "cookies.sqlite");
@@ -85,7 +104,6 @@ public class DatabaseManager {
       for (int a = 1; a < resultSet.getMetaData().getColumnCount(); a++) {
         ShowclixScanner.println(resultSet.getMetaData().getColumnName(a));
       }
-      int lastID = 1;
       while (resultSet.next()) {
         if (filterDomain != null) {
           if (resultSet.getString("baseDomain").contains(filterDomain)) {
@@ -94,7 +112,6 @@ public class DatabaseManager {
               String cN = resultSet.getMetaData().getColumnName(a);
               ShowclixScanner.println(cN + " = " + resultSet.getString(cN));
             }
-            nameList.add(resultSet.getString("name"));
 //          ShowclixScanner.println("Name = " + resultSet.getString("name"));
 //          ShowclixScanner.println("Value = " + resultSet.getString("value"));
 //          ShowclixScanner.println("Expires = " + resultSet.getString("expiry"));
@@ -103,31 +120,33 @@ public class DatabaseManager {
             ShowclixScanner.println("-----------End Cookie Output-----------");
           }
         }
-        lastID = resultSet.getInt("id");
       }
       resultSet.close();
       statement.close();
       connection.close();
-      lastID++;
     } catch (Exception e) {
-      ShowclixScanner.println("ERROR");
+      ShowclixScanner.println("ERROR reading cookies database!", ShowclixScanner.LOGTYPE.NOTES);
       e.printStackTrace();
     }
   }
 
   /**
-   * Writes the given HttpCookies to the Firefox database. Note that the database should be set with
-   * {@link #setDatabaseDirectory(java.lang.String)} before this is run.
+   * Writes the given HttpCookies to the Firefox database. Note that the database should be set with {@link #setDatabaseDirectory(java.lang.String)}
+   * before this is run.
    *
-   * @param cookieList The list of cookies to write to the database
+   * @param cookies The list of cookies to write to the database
    */
-  public static void writeCookies(List<HttpCookie> tempList) {
-    List<HttpCookie> cookieList = new ArrayList(); // Apparently the List can be unchangeable, so create a new one and dump into it so it IS changeable
-    cookieList.addAll(tempList);
-    if (cookieList == null) {
-      return;
+  public static boolean writeCookies(List<HttpCookie> cookies) {
+    if (!isValidDatabase()) {
+      return false;
     }
-    makeCookieBackup();
+    List<HttpCookie> cookieList = new ArrayList(); // Apparently the List can be unchangeable, so create a new one and dump into it so it IS changeable
+    cookieList.addAll(cookies);
+    if (makeCookieBackup()) {
+      ShowclixScanner.println("Cookie backup saved successfully!", ShowclixScanner.LOGTYPE.NOTES);
+    } else {
+      ShowclixScanner.println("WARNING: Unable to save cookies database backup file.", ShowclixScanner.LOGTYPE.MINIMUM);
+    }
     Connection connection = null;
     Statement statement = null;
     ResultSet resultSet = null;
@@ -135,56 +154,63 @@ public class DatabaseManager {
     List nameList = new ArrayList();
     Iterator<HttpCookie> iterator = cookieList.iterator();
     while (iterator.hasNext()) {
-      currCookie = iterator.next();
-      nameList.add(currCookie.getName());
+      nameList.add(iterator.next().getName());
     }
     try {
       Class.forName("org.sqlite.JDBC");
       connection = DriverManager.getConnection("jdbc:sqlite:" + databaseDirectory + "cookies.sqlite");
+      System.out.println(databaseDirectory + "cookies.sqlite");
       statement = connection.createStatement();
       resultSet = statement.executeQuery("SELECT * FROM moz_cookies");
       statement = connection.createStatement();
       connection.setAutoCommit(false);
       int lastID = 1;
       while (resultSet.next()) {
-        if (nameList.contains(resultSet.getString("name"))) {
-          System.out.println("UPDATING A COOKIE!!!");
+        if (nameList.contains(resultSet.getString("name")) && resultSet.getString("baseDomain").contains("showclix")) {
           currCookie = cookieList.get(nameList.indexOf(resultSet.getString("name")));
           if (currCookie == null) {
-            ShowclixScanner.println("ERROR with writing cookies!", ShowclixScanner.LOGTYPE.MINIMUM);
+            ShowclixScanner.println("ERROR with writing cookies: Cookie was null?", ShowclixScanner.LOGTYPE.MINIMUM);
             continue;
           }
-          ShowclixScanner.println("=========Cookie " + currCookie.getName() + "...===========");
-          ShowclixScanner.println("Name = " + currCookie.getName());
-          ShowclixScanner.println("Value = " + currCookie.getValue());
-          ShowclixScanner.println("Max Age = " + currCookie.getMaxAge());
-          ShowclixScanner.println("Comment = " + currCookie.getComment());
-          ShowclixScanner.println("Path = " + currCookie.getPath());
-          ShowclixScanner.println("==========================================================");
-          ShowclixScanner.println("Updating cookie in database.");
-          String sql = "UPDATE moz_cookies set value = '" + currCookie.getValue() + "' where name='" + currCookie.getName() + "';";
-          statement.close();
+          ShowclixScanner.println("=========Updating Cookie " + currCookie.getName() + "...===========");
+          if (currCookie.getMaxAge() == -1 || currCookie.getMaxAge() < (System.currentTimeMillis() / 1000)) {
+            System.out.println("Cookie is invalid. Reformatting.");
+            currCookie.setMaxAge(System.currentTimeMillis() / 1000 + 86400); // Current seconds + 1 day's worth of seconds
+          }
+          for (int a = 1; a < resultSet.getMetaData().getColumnCount(); a++) {
+            String cN = resultSet.getMetaData().getColumnName(a);
+            ShowclixScanner.println(cN + " = " + resultSet.getString(cN));
+          }
+          ShowclixScanner.println("===================================================================");
+          String sql = "UPDATE moz_cookies set value = '" + currCookie.getValue() + "' where id=" + resultSet.getInt("id") + ";";
           statement = connection.createStatement();
-          statement.executeUpdate(sql);
+          ShowclixScanner.println("executeUpdate return: " + statement.executeUpdate(sql));
           connection.commit();
           cookieList.remove(currCookie);
           nameList.remove(currCookie.getName());
-          //resultSet = statement.executeQuery("SELECT * FROM moz_cookies");
+        } else if (nameList.contains(resultSet.getString("name"))) {
+          ShowclixScanner.println("Name = " + resultSet.getString("name") + " :: Site = " + resultSet.getString("baseDomain"));
         }
         lastID = resultSet.getInt("id");
       }
+      ShowclixScanner.println("lastID = " + lastID);
+      lastID++;
       iterator = cookieList.iterator();
       while (iterator.hasNext()) {
         currCookie = iterator.next();
-        ShowclixScanner.println("Creating " + currCookie.getName());
+        if (currCookie.getMaxAge() == -1 || currCookie.getMaxAge() < (System.currentTimeMillis() / 1000)) {
+          System.out.println("Cookie is invalid. Reformatting.");
+          currCookie.setMaxAge(System.currentTimeMillis() / 1000 + 86400); // Current seconds + 1 day's worth of seconds
+        }
+        ShowclixScanner.println("Creating " + currCookie.getName() + " :: " + currCookie.getValue());
         ShowclixScanner.println("id = " + lastID);
         String sql = "INSERT INTO moz_cookies (ID,BASEDOMAIN,APPID,INBROWSERELEMENT,NAME,VALUE,HOST,PATH,EXPIRY,LASTACCESSED,CREATIONTIME,ISSECURE) "
-                + "VALUES (" + lastID + ", 'showclix.com', 0, 0, '" + currCookie.getName() + "', '" + currCookie.getValue() + "', '.showclix.com', '"
-                + currCookie.getPath() + "', 1464970835, " + (System.currentTimeMillis() * 1000) + ", " + (System.currentTimeMillis() * 1000) + ", '"
-                + currCookie.getSecure() + "' );";
-        statement.close();
+            + "VALUES (" + lastID + ", 'showclix.com', 0, 0, '" + currCookie.getName() + "', '" + currCookie.getValue() + "', '.showclix.com', '"
+            + currCookie.getPath() + "', 1503940117, " + (System.currentTimeMillis() * 1000) + ", " + (System.currentTimeMillis() * 1000) + ", '"
+            + currCookie.getSecure() + "' );";
         statement = connection.createStatement();
-        statement.executeUpdate(sql);
+        ShowclixScanner.println("executeUpdate return: " + statement.executeUpdate(sql));
+        //statement.close();
         connection.commit();
         lastID++;
       }
@@ -192,28 +218,39 @@ public class DatabaseManager {
       resultSet.close();
       statement.close();
       connection.close();
-      lastID++;
+      readCookies("showclix");
     } catch (Exception e) {
       ShowclixScanner.println("ERROR");
       e.printStackTrace();
+      return false;
     } finally {
       try {
-        connection.close();
-        statement.close();
-        resultSet.close();
+        if (connection != null) {
+          connection.close();
+        }
+        if (statement != null) {
+          statement.close();
+        }
+        if (resultSet != null) {
+          resultSet.close();
+        }
       } catch (Exception e) {
+        e.printStackTrace();
       }
     }
+    return true;
   }
 
   /**
-   * For internal use only. Use to make a backup of the cookie directory before making changes to
-   * it. This will allow you to recover most, if not all, of your cookies should something go wrong.
-   * This should be called before every database change.
+   * For internal use only. Use to make a backup of the cookie directory before making changes to it. This will allow you to recover most, if not all,
+   * of your cookies should something go wrong. This should be called before every database change.
    *
    * @return True if successful, false if not.
    */
   private static boolean makeCookieBackup() {
+    if (!isValidDatabase()) {
+      return false;
+    }
     try { // Code to make a copy of the current JAR file
       File inputFile = new File(databaseDirectory + "cookies.sqlite");
       InputStream fIn = new BufferedInputStream(new FileInputStream(inputFile));

@@ -15,6 +15,7 @@
   </Properties>
   <SyntheticProperties>
     <SyntheticProperty name="formSizePolicy" type="int" value="1"/>
+    <SyntheticProperty name="generateCenter" type="boolean" value="false"/>
   </SyntheticProperties>
   <AuxValues>
     <AuxValue name="FormSettings_autoResourcing" type="java.lang.Integer" value="0"/>
@@ -164,7 +165,7 @@
             <Component class="javax.swing.JButton" name="jButton2">
               <Properties>
                 <Property name="text" type="java.lang.String" value="Stop Listening"/>
-                <Property name="toolTipText" type="java.lang.String" value="&lt;html&gt;&#xa;WARNING:&lt;br&gt;&#xa;This will stop listening for new&lt;br&gt;&#xa;connections. The only way to&lt;br&gt;&#xa;re-enable this function is by&lt;br&gt;&#xa;restarting the program!&#xa;&lt;/html&gt;"/>
+                <Property name="toolTipText" type="java.lang.String" value="&lt;html&gt;&#xa;WARNING:&lt;br&gt;&#xa;This will stop listening for new&lt;br&gt;&#xa;connections. To listen for new&lt;br&gt;&#xa;connections, you must close all&lt;br&gt;&#xa;current connections.&#xa;&lt;/html&gt;"/>
               </Properties>
               <Events>
                 <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="jButton2ActionPerformed"/>
@@ -213,7 +214,6 @@
             <Component class="javax.swing.JButton" name="jButton3">
               <Properties>
                 <Property name="text" type="java.lang.String" value="Retry UPnP"/>
-                <Property name="toolTipText" type="java.lang.String" value="&lt;html&gt;&#xa;This button appears when the program&lt;br&gt;&#xa;was unable to open Port 9243 on your&lt;br&gt;&#xa;router. If you&apos;re unable to open the&lt;br&gt;&#xa;port after multiple attempts, wait about&lt;br&gt;&#xa;24 hours and try again. If the problem&lt;br&gt;&#xa;persists, contact your network&lt;br&gt;&#xa;administrator.&#xa;&lt;/html&gt;"/>
               </Properties>
               <Events>
                 <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="jButton3ActionPerformed"/>

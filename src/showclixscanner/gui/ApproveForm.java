@@ -26,19 +26,19 @@ public class ApproveForm extends javax.swing.JFrame {
   }
 
   public final void customComponents() {
-    showclixscanner.ShowclixScanner.startBackgroundThread(new Runnable() {
-      @Override
-      public void run() {
-        try {
-          Thread.sleep(60000);
-        } catch (InterruptedException interruptedException) {
-          return;
-        }
-        if (isVisible()) {
-          setApprove(false);
-        }
-      }
-    }, "ApproveForm Thread");
+//    showclixscanner.ShowclixScanner.startBackgroundThread(new Runnable() {
+//      @Override
+//      public void run() {
+//        try {
+//          Thread.sleep(60000);
+//        } catch (InterruptedException interruptedException) {
+//          return;
+//        }
+//        if (isVisible()) {
+//          setApprove(false);
+//        }
+//      }
+//    }, "ApproveForm Thread");
   }
 
   public void setHeader(final String txt) {
@@ -104,9 +104,10 @@ public class ApproveForm extends javax.swing.JFrame {
     JBApprove = new javax.swing.JButton();
     JBDisapprove = new javax.swing.JButton();
 
-    setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
+    setDefaultCloseOperation(javax.swing.WindowConstants.DO_NOTHING_ON_CLOSE);
     setTitle("Approval Required");
     setAlwaysOnTop(true);
+    setResizable(false);
 
     jLabel1.setFont(new java.awt.Font("Tahoma", 0, 36)); // NOI18N
     jLabel1.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
@@ -115,8 +116,10 @@ public class ApproveForm extends javax.swing.JFrame {
     jTextArea1.setEditable(false);
     jTextArea1.setColumns(20);
     jTextArea1.setFont(new java.awt.Font("Monospaced", 0, 14)); // NOI18N
+    jTextArea1.setLineWrap(true);
     jTextArea1.setRows(5);
     jTextArea1.setText("Description");
+    jTextArea1.setWrapStyleWord(true);
     jScrollPane1.setViewportView(jTextArea1);
 
     JBApprove.setText("Approve");
